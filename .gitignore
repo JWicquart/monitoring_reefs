@@ -1,0 +1,17 @@
+# Base #
+########
+
+.Rproj.user
+.Rproj
+.Rhistory
+.RData
+.Ruserdata
+*.html
+
+# folder #
+##########
+
+data/
+doc/
+misc/
+figs/
