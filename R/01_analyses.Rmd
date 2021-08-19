@@ -1,0 +1,280 @@
+---
+title: "Analyses"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: "cosmo"
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Load packages and data
+
+```{r}
+
+# 1. Load packages ----
+
+library(tidyverse) # Core tidyverse packages
+library(sf)
+sf_use_s2(FALSE) # Switch from S2 to GEOS
+library(ggstream)
+library(cowplot)
+
+# 2. Source functions ----
+
+source("functions/graphical_par.R")
+source("functions/theme_map.R")
+source("functions/theme_graph.R")
+theme_set(theme_graph())
+
+# 3. Load data ----
+
+data_gcrmn <- read.csv2(file = "./../data/03-merge_all_all_all_benthos_NA.csv") %>% 
+  filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5")))
+
+# 4. Summarize by duration ----
+
+data_gcrmn_sites <- data_gcrmn %>% 
+  group_by(Area, Country, Location, Site, Latitude, Longitude) %>% 
+  drop_na(Latitude, Longitude, Year) %>% 
+  summarise(interval_years = max(Year, na.rm = TRUE) - min(Year, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  mutate(interval_class = cut(interval_years, 
+                              breaks = c(-Inf, 1, 5, 10, 15, Inf),
+                              labels = c("1", "2-5", "6-10", "11-15", ">15"))) %>% 
+  st_as_sf(., coords = c("Longitude", "Latitude"), crs = 4326) %>% 
+  st_transform(., crs = crs_selected)
+
+```
+
+# 2. Maps
+
+## 2.1 Load data
+
+```{r}
+
+# 1. Load background maps ----
+
+data_map <- read_sf("./../data/00_natural-earth-data/ne_10m_land/ne_10m_land.shp") %>% 
+  st_transform(crs = 4326) %>% 
+  st_transform(crs = crs_selected)
+
+# 2. Create the border of background map ----
+
+lats <- c(90:-90, -90:90, 90)
+longs <- c(rep(c(180, -180), each = 181), 180)
+
+background_map_border <- list(cbind(longs, lats)) %>%
+  st_polygon() %>%
+  st_sfc(crs = 4326) %>% 
+  st_sf() %>%
+  st_transform(crs = crs_selected)
+
+# 3. Create polygons for tropics ----
+
+data_tropics <- tibble(tropic = c("Equator", "Equator", "Cancer", "Cancer", "Capricorne", "Capricorne"),
+                       lat = c(0, 0, 23.43667, 23.43667, -23.43667, -23.43667),
+                       long = c(-180, 180, -180, 180, -180, 180)) %>% 
+  st_as_sf(coords = c("long", "lat"), crs = 4326) %>% 
+  group_by(tropic) %>% 
+  summarize() %>%
+  st_cast("LINESTRING") %>% 
+  st_transform(crs = crs_selected)
+
+```
+
+## 2.2 Global map duration
+
+```{r}
+
+# 1. Make the map ----
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # Site of benthic cover data
+  geom_sf(data = data_gcrmn_sites, aes(color = interval_class)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(override.aes = list(size = 5))) +
+  scale_color_manual(values = palette_duration) +
+  theme_map() +
+  theme(legend.title = element_blank())
+
+# 2. Save the map ----
+
+ggsave("./../figs/01_global-map-site-duration.png", height = 6, width = 10)
+
+```
+
+# 3. Methods used
+
+## 3.1 Temporal trend
+
+```{r}
+
+# 1. Filter and transform the data ----
+
+data_method <- data_gcrmn %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Latitude, Longitude, Year, Method) %>% 
+  distinct(.) %>% 
+  mutate(Method = str_split_fixed(Method, ",", 6)[,1],
+         Method = str_to_lower(Method),
+         Method = str_trim(Method, side = "both"),
+         Method = str_squish(Method),
+         Method = case_when(Method %in% c("line intercept transect", 
+                                          "line intersect transect",
+                                          "lit") ~ "LIT",
+                            Method %in% c("point intercept method",
+                                          "point intercept transect",
+                                          "point intersect transect",
+                                          "pit") ~ "PIT",
+                            Method %in% c("photo-quadrat",
+                                          "Photo-quadrat",
+                                          "underwater photo transect") ~ "Photo-quadrat",
+                            Method %in% c("visual census",
+                                          "visual quadrat estimation",
+                                          "vis est.") ~ "Visual census",
+                            Method == "video-transect" ~ "Video transect",
+                            TRUE ~ "Unknown")) %>% 
+  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
+  group_by(Method, Year) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  complete(Method, fill = list(Abs = 0)) %>% 
+  group_by(Year) %>% 
+  mutate(Rel = (Abs/sum(Abs))*100)
+
+# 2. Define label positions ----
+
+data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
+                            x = c(1995, 2012, 2003, 1989, 2001, 1990),
+                            y = c(0.94, 0.75, 0.5, 0.65, 0.22, 0.22))
+
+# 3. Make the plot ----
+
+ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)) +
+  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.8) +
+  geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
+  # Alternative using geom_stream_label but less precise
+  #geom_stream_label(type = "proportional", family = font_choose_graph) +
+  scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  lims(x = c(1980, 2020)) +
+  labs(y = "Percentage of surveys", x = "Year")
+
+# 4. Save the plot ----
+
+ggsave(filename = "./../figs/02_evolution-methods-used_streamplot.png", height = 4, width = 8)
+
+# 5. Remove useless objects ----
+
+rm(data_method, data_method_label)
+
+```
+
+# 4. Misc
+
+## 4.1 Monitoring duration
+
+```{r fig.width=6, fig.height=5}
+
+# 1. Transform the data ----
+
+data_duration <- data_gcrmn_sites %>% 
+  st_drop_geometry() %>% 
+  group_by(interval_class) %>% 
+  summarise(n_abs = n()) %>% 
+  ungroup() %>% 
+  mutate(n_rel = (n_abs/sum(n_abs))*100)
+
+# 2. Make the plot ----
+
+plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)) +
+  geom_bar(stat = "identity", aes(fill = interval_class), show.legend = FALSE, col = "black") +
+  scale_fill_manual(values = palette_duration) +
+  lims(y = c(0, 100)) +
+  labs(x = "Monitoring duration (years)", y = "Sites (%)")
+
+```
+
+## 4.2 Surveys by year
+
+```{r}
+
+# 1. Modify the data ----
+
+data_year <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year) %>% 
+  distinct(.)
+
+# 2. Make the plot ----
+
+plot_year <- ggplot(data_year, aes(x = Year)) +
+  # By default its density, width*density*100 gives percentage
+  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
+                 color = col_color_graph, fill = col_fill_graph) +
+  lims(y = c(0, 10)) +
+  labs(x = "Year", y = "Surveys (%)")
+
+```
+
+## 4.3 Surveys by depth
+
+```{r}
+
+# 1. Modify the data ----
+
+data_depth <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year, Depth) %>% 
+  distinct(.)
+
+# 2. Make the plot ----
+
+plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
+  # By default its density, width*density*100 gives percentage
+  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
+                 color = col_color_graph, fill = col_fill_graph) +
+  lims(x = c(0, 40), y = c(0, 30)) +
+  labs(x = "Depth (m)", y = "Surveys (%)")
+
+```
+
+## 4.4 plot assemblage
+
+```{r}
+
+# 1. Make the plot ----
+
+plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "C"))
+
+# 2. Save the plot ----
+
+ggsave(filename = "./../figs/02_combined-plots-distri-year-depth-duration.png", height = 3, width = 10)
+
+# 3. Remove useless objects ----
+
+rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
+
+```
+
+# Reproducibility
+
+```{r reprod}
+
+# 1. Reproducibility ----
+
+sessionInfo()
+
+```
+
+---
+Jeremy WICQUART | jeremywicquart@gmail.com | `r format(Sys.time())`
