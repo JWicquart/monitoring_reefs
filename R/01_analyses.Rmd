@@ -258,11 +258,60 @@ plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "
 
 # 2. Save the plot ----
 
-ggsave(filename = "./../figs/02_combined-plots-distri-year-depth-duration.png", height = 3, width = 10)
+ggsave(filename = "./../figs/03_combined-plots-distri-year-depth-duration.png", height = 3, width = 10)
 
 # 3. Remove useless objects ----
 
 rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
+
+```
+
+# 5. Taxonomic resolution
+
+```{r}
+
+# 1. Filter and transform the data ----
+
+data_taxo <- data_gcrmn %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Year, Category, Group, Family, Genus, Species) %>% 
+  mutate(Tax_lvl = case_when(!(is.na(Species)) ~ "Species",
+                             !(is.na(Genus)) ~ "Genus",
+                             !(is.na(Family)) ~ "Family",
+                             !(is.na(Group)) ~ "Group",
+                             !(is.na(Category)) ~ "Category")) %>%
+  mutate(Tax_lvl = fct_relevel(Tax_lvl, c("Category", "Group", "Family", "Genus", "Species"))) %>% 
+  group_by(Year, Tax_lvl) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  complete(Tax_lvl, fill = list(Abs = 0)) %>% 
+  group_by(Year) %>% 
+  mutate(Rel = (Abs/sum(Abs))*100)
+
+# 2. Define label positions ----
+
+data_taxo_label <- tibble(Tax_lvl = c("Category", "Group", "Family", "Genus", "Species"),
+                          x = c(1990, 2010, 1998, 2000, 2010),
+                          y = c(0.875, 0.65, 0.4, 0.2, 0.1))
+
+# 3. Make the plot ----
+
+ggplot(data = data_taxo, aes(x = Year, y = Rel, fill = Tax_lvl, label = Tax_lvl)) +
+  geom_stream(type = "proportional", show.legend = FALSE) +
+  geom_text(data = data_taxo_label, aes(x = x, y = y, label = Tax_lvl), family = font_choose_graph) +
+  # Alternative using geom_stream_label but less precise
+  #geom_stream_label(type = "proportional", family = font_choose_graph) +
+  scale_fill_manual(values = c("#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  lims(x = c(1980, 2020)) +
+  labs(y = "Percentage of surveys", x = "Year")
+
+# 4. Save the plot ----
+
+ggsave(filename = "./../figs/04_evolution-taxo-resolution_streamplot.png", height = 4, width = 8)
+
+# 5. Remove useless objects ----
+
+rm(data_taxo, data_taxo_label)
 
 ```
 
