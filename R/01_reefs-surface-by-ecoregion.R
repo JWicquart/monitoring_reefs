@@ -32,7 +32,8 @@ data_surface <- st_intersection(data_reefs, data_meow) %>%
   mutate(area = st_area(.)) %>% 
   group_by(ECOREGION) %>% 
   summarise(area = sum(area)) %>% 
-  st_drop_geometry(.)
+  st_drop_geometry(.) %>% 
+  mutate(area = as.numeric(area))
 
 # 6. Export the data ----
 
