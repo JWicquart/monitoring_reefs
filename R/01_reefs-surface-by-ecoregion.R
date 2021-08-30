@@ -24,13 +24,13 @@ ggplot() +
   geom_sf(data = data_meow) +
   geom_sf(data = data_reefs, col = "red")
 
-# 5. Make the join ----
+# 5. Make the join to estimate surface by ecoregion ----
 
 data_surface <- st_intersection(data_reefs, data_meow) %>%  
   st_transform(crs = "ESRI:54001") %>% 
   st_make_valid() %>%  
   mutate(area = st_area(.)) %>% 
-  group_by(ECOREGION) %>% 
+  group_by(ECOREGION, ECO_CODE_X) %>% 
   summarise(area = sum(area)) %>% 
   st_drop_geometry(.) %>% 
   mutate(area = as.numeric(area))
@@ -38,3 +38,12 @@ data_surface <- st_intersection(data_reefs, data_meow) %>%
 # 6. Export the data ----
 
 save(data_surface, file = "data/04_reef-surface-by-ecoregion.RData")
+
+# 7. Make the join to extract ecoregions with coral reefs ----
+
+data_meowreefs <- left_join(data_surface, data_meow) %>% 
+  st_as_sf()
+
+# 8. Export the data ----
+
+save(data_meowreefs, file = "data/04_meow-with-coral-reefs.RData")

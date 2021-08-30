@@ -22,11 +22,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # 1. Load packages ----
 
+library(magrittr) # To use special pipes
 library(tidyverse) # Core tidyverse packages
 library(sf)
 sf_use_s2(FALSE) # Switch from S2 to GEOS
 library(ggstream)
 library(cowplot)
+library(ggsflabel)
 
 # 2. Source functions ----
 
@@ -379,7 +381,17 @@ data_descriptors <- data_gcrmn_meow %>%
   pivot_wider(names_from = interval_class, values_from = n, values_fill = 0) %>% 
   left_join(data_descriptors, .)
 
-# 7. Add reef surfaces ----
+# 7. Number of years with data ---- 
+
+data_descriptors <- data_gcrmn_meow %>% 
+  select(ECOREGION, Year) %>% 
+  distinct() %>% 
+  group_by(ECOREGION) %>% 
+  summarise(n_years = n(),
+            first_year = min(Year)) %>% 
+  left_join(data_descriptors, .)
+
+# 8. Add reef surfaces ----
 
 load("../data/04_reef-surface-by-ecoregion.RData")
 
@@ -393,7 +405,7 @@ data_descriptors <- left_join(data_descriptors, data_surface)
 
 library(FactoMineR)
 
-PCA(data_descriptors[,2:10])
+PCA(data_descriptors[,2:12])
 
 ```
 
@@ -406,7 +418,13 @@ PCA(data_descriptors[,2:10])
 data_descriptors_rel <- data_descriptors %>% 
   mutate_at(2:ncol(.), ~ (./sum(., na.rm = TRUE))*100)
 
-# 2. Make the plot ----
+```
+
+### Sites
+
+```{r}
+
+# 1. Make the plot ----
 
 ggplot(data = data_descriptors_rel, aes(x = area, y = n_sites, label = ECOREGION)) +
   geom_point() +
@@ -414,9 +432,27 @@ ggplot(data = data_descriptors_rel, aes(x = area, y = n_sites, label = ECOREGION
   geom_abline(intercept = 0) +
   labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
 
-# 3. Save the plot ----
+# 2. Save the plot ----
 
 ggsave(filename = "../figs/05_biplot-comparison-reef-surface-sites.png", height = 8, width = 8)
+
+```
+
+### Surveys
+
+```{r}
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors_rel, aes(x = area, y = n_surveys, label = ECOREGION)) +
+  geom_point() +
+  geom_label() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
+
+# 2. Save the plot ----
+
+ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", height = 8, width = 8)
 
 ```
 
@@ -446,6 +482,497 @@ ggplot() +
   scale_color_manual(values = palette_duration) +
   theme_map() +
   theme(legend.title = element_blank())
+
+```
+
+# 6.5 Relative to reef surface
+
+```{r}
+
+load(file = "../data/04_reef-surface-by-ecoregion.RData")
+
+data_surface <- left_join(data_surface, data_descriptors) %>% 
+  select(-n_1, -n_2_5, -n_6_10, -n_11_15) %>% 
+  mutate(n_sites_100 = (n_sites*1000)/area)
+
+ggplot(data = data_surface) +
+  geom_point(aes(x = ECOREGION, y = n_sites_100))
+  
+hist(data_surface$n_sites_100)
+
+
+```
+
+# MEOW
+
+## Global map
+
+```{r}
+
+# 1. Load the data ----
+
+load(file = "../data/04_meow-with-coral-reefs.RData")
+
+# 2. Make the map ----
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # Ecoregions
+  geom_sf(data = data_meowreefs) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(override.aes = list(size = 5))) +
+  scale_color_manual(values = palette_duration) +
+  theme_map() +
+  theme(legend.title = element_blank())
+
+# 3. Save the map ----
+
+ggsave("../figs/01_global-meow-with-coral-reefs.png", height = 6, width = 10)
+
+```
+
+## Regional maps
+
+```{r}
+
+# 1. Transform CRS for data map ----
+
+data_map <- data_map %>% 
+  st_transform(., crs = 4326)
+
+# 2. Transform CRS for data GCRMN sites ----
+
+data_gcrmn_sites <- data_gcrmn_sites %>% 
+  st_transform(., crs = 4326)
+
+```
+
+### Australia
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(133, -25))), crs = 4326) %>%
+  st_buffer(dist = 28)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(141, 140, 142, 150, 143, 202, 203, 204, 205, 206, 207, 208, 209, 211, 210, 145, 144))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Australia")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-australia.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Caribbean
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(-85, 18))), crs = 4326) %>%
+  st_buffer(dist = 35)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(69, 43, 70, 63, 65, 64, 66, 67, 62, 59, 60, 61, 164, 165, 166, 167,
+                           168, 169, 170, 171, 172, 173, 174, 175, 68, 42))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Caribbean and Eastern Pacific")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-caribbean-and-eastern-pacific.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Red Sea and Gulf
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(47, 20))), crs = 4326) %>%
+  st_buffer(dist = 20)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(87, 88, 89, 90, 91, 92))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Red Sea and Gulf")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-red-sea-and-gulf.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Western Indian Ocean
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(50, -12))), crs = 4326) %>%
+  st_buffer(dist = 27)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 193))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Western Indian Ocean")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-western-indian-ocean.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Brazil
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(-35, -12))), crs = 4326) %>%
+  st_buffer(dist = 18)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(73, 74, 75, 76, 77, 180))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Brazil")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-brazil.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### South Asia
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(77, 10))), crs = 4326) %>%
+  st_buffer(dist = 25)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(103, 104, 105, 106, 107))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "South Asia")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-south-asia.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### East Asia
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(125, 4))), crs = 4326) %>%
+  st_buffer(dist = 40)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(109, 110, 111, 118, 115, 116, 114, 112, 113, 117, 119, 120, 127, 133, 126,
+                           128, 129, 130, 131, 139, 138, 134, 136, 137, 132, 125, 121, 47, 48, 49, 50, 51, 52))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "East Asia")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-east-asia.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Pacific
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(171.5, 10))), crs = 4326) %>%
+  st_buffer(dist = 42)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+data_map_region <- st_shift_longitude(data_map_region)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(124, 135, 149, 148, 122, 123, 153, 154, 147, 157, 146, 156, 155, 152))
+
+data_meowreefs_region <- st_shift_longitude(data_meowreefs_region)
+
+data_meowreefs_region <- data_meowreefs_region %<>% # Special pipe from magrittr
+  st_buffer(0.0015) # To join polygon (remove vertical line)
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, st_shift_longitude(data_gcrmn_sites))
+
+data_sites_region <- st_shift_longitude(data_sites_region)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  scale_color_manual(values = palette_duration) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Pacific")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/06_meow-pacific.png", dpi = 600, width = 4, height = 5)
 
 ```
 
