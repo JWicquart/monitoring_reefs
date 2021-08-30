@@ -37,16 +37,32 @@ source("functions/theme_map.R")
 source("functions/theme_graph.R")
 theme_set(theme_graph())
 
-# 3. Load data ----
+# 3. Load MEOW data ----
+
+load(file = "../data/04_meow-with-coral-reefs.RData")
+
+# 4. Load 2020 GCRMN data ----
 
 data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>% 
-  filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5")))
+  filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5"))) %>% 
+  drop_na(Latitude, Longitude)
 
-# 4. Summarize by duration ----
+# 5. Remove sites falling outside MEOW containing coral reefs ----
+
+data_gcrmn <- data_gcrmn %>% 
+  mutate(lat = Latitude, 
+         long = Longitude) %>% 
+  st_as_sf(., coords = c("long", "lat"), crs = 4326) %>% 
+  st_join(., data_meowreefs) %>% 
+  drop_na(ECOREGION) %>% 
+  st_drop_geometry() %>% 
+  select(-ECOREGION:-SHAPE_Area)
+
+# 6. Summarize by duration ----
 
 data_gcrmn_sites <- data_gcrmn %>% 
   group_by(Area, Country, Location, Site, Latitude, Longitude) %>% 
-  drop_na(Latitude, Longitude, Year) %>% 
+  drop_na(Year) %>% 
   summarise(interval_years = max(Year, na.rm = TRUE) - min(Year, na.rm = TRUE)) %>%
   ungroup() %>% 
   mutate(interval_class = cut(interval_years, 
@@ -93,7 +109,7 @@ data_tropics <- tibble(tropic = c("Equator", "Equator", "Cancer", "Cancer", "Cap
 
 ```
 
-## 2.2 Global map duration
+## 2.2 Global map MEOW
 
 ```{r}
 
@@ -102,6 +118,32 @@ data_tropics <- tibble(tropic = c("Equator", "Equator", "Cancer", "Cancer", "Cap
 ggplot() +
   # Background map border
   geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_meowreefs, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(override.aes = list(size = 5))) +
+  scale_color_manual(values = palette_duration) +
+  theme_map() +
+  theme(legend.title = element_blank())
+
+# 2. Save the map ----
+
+ggsave("../figs/01_global-meow-with-coral-reefs.png", height = 6, width = 10)
+
+```
+
+## 2.3 Global map duration
+
+```{r}
+
+# 1. Make the map ----
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_meowreefs, fill = "#ecf0f1") +
   # Site of benthic cover data
   geom_sf(data = data_gcrmn_sites, aes(color = interval_class)) +
   # Background map
@@ -117,423 +159,7 @@ ggsave("../figs/01_global-map-site-duration.png", height = 6, width = 10)
 
 ```
 
-# 3. Methods used
-
-## 3.1 Temporal trend
-
-```{r}
-
-# 1. Filter and transform the data ----
-
-data_method <- data_gcrmn %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
-  select(Latitude, Longitude, Year, Method) %>% 
-  distinct(.) %>% 
-  mutate(Method = str_split_fixed(Method, ",", 6)[,1],
-         Method = str_to_lower(Method),
-         Method = str_trim(Method, side = "both"),
-         Method = str_squish(Method),
-         Method = case_when(Method %in% c("line intercept transect", 
-                                          "line intersect transect",
-                                          "lit") ~ "LIT",
-                            Method %in% c("point intercept method",
-                                          "point intercept transect",
-                                          "point intersect transect",
-                                          "pit") ~ "PIT",
-                            Method %in% c("photo-quadrat",
-                                          "Photo-quadrat",
-                                          "underwater photo transect") ~ "Photo-quadrat",
-                            Method %in% c("visual census",
-                                          "visual quadrat estimation",
-                                          "vis est.") ~ "Visual census",
-                            Method == "video-transect" ~ "Video transect",
-                            TRUE ~ "Unknown")) %>% 
-  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
-  group_by(Method, Year) %>% 
-  count(name = "Abs") %>% 
-  ungroup() %>% 
-  complete(Method, fill = list(Abs = 0)) %>% 
-  group_by(Year) %>% 
-  mutate(Rel = (Abs/sum(Abs))*100)
-
-# 2. Define label positions ----
-
-data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
-                            x = c(1995, 2012, 2003, 1989, 2001, 1990),
-                            y = c(0.94, 0.75, 0.5, 0.65, 0.22, 0.22))
-
-# 3. Make the plot ----
-
-ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)) +
-  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.8) +
-  geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
-  # Alternative using geom_stream_label but less precise
-  #geom_stream_label(type = "proportional", family = font_choose_graph) +
-  scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
-  lims(x = c(1980, 2020)) +
-  labs(y = "Percentage of surveys", x = "Year")
-
-# 4. Save the plot ----
-
-ggsave(filename = "../figs/02_evolution-methods-used_streamplot.png", height = 4, width = 8)
-
-# 5. Remove useless objects ----
-
-rm(data_method, data_method_label)
-
-```
-
-# 4. Misc
-
-## 4.1 Monitoring duration
-
-```{r fig.width=6, fig.height=5}
-
-# 1. Transform the data ----
-
-data_duration <- data_gcrmn_sites %>% 
-  st_drop_geometry() %>% 
-  group_by(interval_class) %>% 
-  summarise(n_abs = n()) %>% 
-  ungroup() %>% 
-  mutate(n_rel = (n_abs/sum(n_abs))*100)
-
-# 2. Make the plot ----
-
-plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)) +
-  geom_bar(stat = "identity", aes(fill = interval_class), show.legend = FALSE, col = "black") +
-  scale_fill_manual(values = palette_duration) +
-  lims(y = c(0, 100)) +
-  labs(x = "Monitoring duration (years)", y = "Sites (%)")
-
-```
-
-## 4.2 Surveys by year
-
-```{r}
-
-# 1. Modify the data ----
-
-data_year <- data_gcrmn %>% 
-  select(Latitude, Longitude, Year) %>% 
-  distinct(.)
-
-# 2. Make the plot ----
-
-plot_year <- ggplot(data_year, aes(x = Year)) +
-  # By default its density, width*density*100 gives percentage
-  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
-                 color = col_color_graph, fill = col_fill_graph) +
-  lims(y = c(0, 10)) +
-  labs(x = "Year", y = "Surveys (%)")
-
-```
-
-## 4.3 Surveys by depth
-
-```{r}
-
-# 1. Modify the data ----
-
-data_depth <- data_gcrmn %>% 
-  select(Latitude, Longitude, Year, Depth) %>% 
-  distinct(.)
-
-# 2. Make the plot ----
-
-plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
-  # By default its density, width*density*100 gives percentage
-  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
-                 color = col_color_graph, fill = col_fill_graph) +
-  lims(x = c(0, 40), y = c(0, 30)) +
-  labs(x = "Depth (m)", y = "Surveys (%)")
-
-```
-
-## 4.4 plot assemblage
-
-```{r}
-
-# 1. Make the plot ----
-
-plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "C"))
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/03_combined-plots-distri-year-depth-duration.png", height = 3, width = 10)
-
-# 3. Remove useless objects ----
-
-rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
-
-```
-
-# 5. Taxonomic resolution
-
-```{r}
-
-# 1. Filter and transform the data ----
-
-data_taxo <- data_gcrmn %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
-  select(Year, Category, Group, Family, Genus, Species) %>% 
-  mutate(Tax_lvl = case_when(!(is.na(Species)) ~ "Species",
-                             !(is.na(Genus)) ~ "Genus",
-                             !(is.na(Family)) ~ "Family",
-                             !(is.na(Group)) ~ "Group",
-                             !(is.na(Category)) ~ "Category")) %>%
-  mutate(Tax_lvl = fct_relevel(Tax_lvl, c("Category", "Group", "Family", "Genus", "Species"))) %>% 
-  group_by(Year, Tax_lvl) %>% 
-  count(name = "Abs") %>% 
-  ungroup() %>% 
-  complete(Tax_lvl, fill = list(Abs = 0)) %>% 
-  group_by(Year) %>% 
-  mutate(Rel = (Abs/sum(Abs))*100)
-
-# 2. Define label positions ----
-
-data_taxo_label <- tibble(Tax_lvl = c("Category", "Group", "Family", "Genus", "Species"),
-                          x = c(1990, 2010, 1998, 2000, 2010),
-                          y = c(0.875, 0.65, 0.4, 0.2, 0.1))
-
-# 3. Make the plot ----
-
-ggplot(data = data_taxo, aes(x = Year, y = Rel, fill = Tax_lvl, label = Tax_lvl)) +
-  geom_stream(type = "proportional", show.legend = FALSE) +
-  geom_text(data = data_taxo_label, aes(x = x, y = y, label = Tax_lvl), family = font_choose_graph) +
-  # Alternative using geom_stream_label but less precise
-  #geom_stream_label(type = "proportional", family = font_choose_graph) +
-  scale_fill_manual(values = c("#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
-  lims(x = c(1980, 2020)) +
-  labs(y = "Percentage of surveys", x = "Year")
-
-# 4. Save the plot ----
-
-ggsave(filename = "../figs/04_evolution-taxo-resolution_streamplot.png", height = 4, width = 8)
-
-# 5. Remove useless objects ----
-
-rm(data_taxo, data_taxo_label)
-
-```
-
-# 6. Comparison between ecoregions
-
-## 6.1 Calculation of descriptors
-
-```{r}
-
-# 1. Load and transform Marine Ecoregions of the World (MEOW) data ----
-
-data_meow <- read_sf("../data/02_marine-ecoregions-of-the-world/Marine_Ecoregions_Of_the_World__MEOW_.shp") %>% 
-  st_transform(crs = 4326) %>% 
-  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
-  st_make_valid()
-
-# 2. Join MEOW and GCRMN data ----
-
-data_gcrmn_meow <- data_gcrmn %>% 
-  drop_na(Latitude, Longitude) %>% 
-  st_as_sf(., coords = c("Longitude", "Latitude"), crs = 4326) %>% 
-  st_intersection(., data_meow) %>% 
-  mutate(geometry2 = str_remove_all(geometry, "c|\\(|\\)"),
-         Longitude = as.numeric(str_split_fixed(geometry2, ",", 2)[,1]),
-         Latitude = as.numeric(str_split_fixed(geometry2, ",", 2)[,2])) %>% 
-  st_drop_geometry() %>% 
-  select(-geometry2)
-
-# 3. Calculation of sites ----
-
-data_descriptors <- data_gcrmn_meow %>% 
-  select(Latitude, Longitude, ECOREGION) %>% 
-  distinct() %>% 
-  group_by(ECOREGION) %>% 
-  summarise(n_sites = n())
-
-# 4. Calculation of observations ----
-
-data_descriptors <- data_gcrmn_meow %>% 
-  group_by(ECOREGION) %>% 
-  summarise(n_obs = n()) %>% 
-  left_join(data_descriptors, .)
-  
-# 5. Calculation of surveys ----
-
-data_descriptors <- data_gcrmn_meow %>% 
-  select(Latitude, Longitude, Year, ECOREGION) %>% 
-  distinct() %>% 
-  group_by(ECOREGION) %>% 
-  summarise(n_surveys = n()) %>% 
-  left_join(data_descriptors, .)
-
-# 6. Calculation of monitoring duration ----
-
-data_descriptors <- data_gcrmn_meow %>% 
-  group_by(Area, Country, Location, Site, Latitude, Longitude, ECOREGION) %>% 
-  summarise(interval_years = max(Year, na.rm = TRUE) - min(Year, na.rm = TRUE)) %>%
-  drop_na(interval_years) %>% 
-  ungroup() %>% 
-  mutate(interval_class = cut(interval_years, 
-                              breaks = c(-Inf, 1, 5, 10, 15, Inf),
-                              labels = c("n_1", "n_2_5", "n_6_10", "n_11_15", "n_15"))) %>% 
-  group_by(ECOREGION, interval_class) %>%
-  summarise(n = n()) %>% 
-  pivot_wider(names_from = interval_class, values_from = n, values_fill = 0) %>% 
-  left_join(data_descriptors, .)
-
-# 7. Number of years with data ---- 
-
-data_descriptors <- data_gcrmn_meow %>% 
-  select(ECOREGION, Year) %>% 
-  distinct() %>% 
-  group_by(ECOREGION) %>% 
-  summarise(n_years = n(),
-            first_year = min(Year)) %>% 
-  left_join(data_descriptors, .)
-
-# 8. Add reef surfaces ----
-
-load("../data/04_reef-surface-by-ecoregion.RData")
-
-data_descriptors <- left_join(data_descriptors, data_surface)
-
-```
-
-## 6.2 PCA
-
-```{r}
-
-library(FactoMineR)
-
-PCA(data_descriptors[,2:12])
-
-```
-
-## 6.3 Effort vs surface
-
-```{r}
-
-# 1. Transform descriptors in relative ----
-
-data_descriptors_rel <- data_descriptors %>% 
-  mutate_at(2:ncol(.), ~ (./sum(., na.rm = TRUE))*100)
-
-```
-
-### Sites
-
-```{r}
-
-# 1. Make the plot ----
-
-ggplot(data = data_descriptors_rel, aes(x = area, y = n_sites, label = ECOREGION)) +
-  geom_point() +
-  geom_label() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/05_biplot-comparison-reef-surface-sites.png", height = 8, width = 8)
-
-```
-
-### Surveys
-
-```{r}
-
-# 1. Make the plot ----
-
-ggplot(data = data_descriptors_rel, aes(x = area, y = n_surveys, label = ECOREGION)) +
-  geom_point() +
-  geom_label() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", height = 8, width = 8)
-
-```
-
-## 6.4 Maps
-
-```{r}
-
-# 1. Join MEOW with descriptors ----
-
-data_meow <- read_sf("../data/02_marine-ecoregions-of-the-world/Marine_Ecoregions_Of_the_World__MEOW_.shp") %>% 
-  st_transform(crs = 4326) %>% 
-  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
-  st_make_valid() %>% 
-  left_join(data_descriptors, .) %>% 
-  st_as_sf()
-
-# 2. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # Site of benthic cover data
-  geom_sf(data = data_meow, aes(fill = n_15)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(override.aes = list(size = 5))) +
-  scale_color_manual(values = palette_duration) +
-  theme_map() +
-  theme(legend.title = element_blank())
-
-```
-
-# 6.5 Relative to reef surface
-
-```{r}
-
-load(file = "../data/04_reef-surface-by-ecoregion.RData")
-
-data_surface <- left_join(data_surface, data_descriptors) %>% 
-  select(-n_1, -n_2_5, -n_6_10, -n_11_15) %>% 
-  mutate(n_sites_100 = (n_sites*1000)/area)
-
-ggplot(data = data_surface) +
-  geom_point(aes(x = ECOREGION, y = n_sites_100))
-  
-hist(data_surface$n_sites_100)
-
-
-```
-
-# MEOW
-
-## Global map
-
-```{r}
-
-# 1. Load the data ----
-
-load(file = "../data/04_meow-with-coral-reefs.RData")
-
-# 2. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # Ecoregions
-  geom_sf(data = data_meowreefs) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(override.aes = list(size = 5))) +
-  scale_color_manual(values = palette_duration) +
-  theme_map() +
-  theme(legend.title = element_blank())
-
-# 3. Save the map ----
-
-ggsave("../figs/01_global-meow-with-coral-reefs.png", height = 6, width = 10)
-
-```
-
-## Regional maps
+## 2.4 Regional maps duration
 
 ```{r}
 
@@ -973,6 +599,392 @@ ggplot() +
 # 6. Save the map ----
 
 ggsave("../figs/06_meow-pacific.png", dpi = 600, width = 4, height = 5)
+
+```
+
+# 3. Methods used
+
+## 3.1 Temporal trend
+
+```{r}
+
+# 1. Filter and transform the data ----
+
+data_method <- data_gcrmn %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Latitude, Longitude, Year, Method) %>% 
+  distinct(.) %>% 
+  mutate(Method = str_split_fixed(Method, ",", 6)[,1],
+         Method = str_to_lower(Method),
+         Method = str_trim(Method, side = "both"),
+         Method = str_squish(Method),
+         Method = case_when(Method %in% c("line intercept transect", 
+                                          "line intersect transect",
+                                          "lit") ~ "LIT",
+                            Method %in% c("point intercept method",
+                                          "point intercept transect",
+                                          "point intersect transect",
+                                          "pit") ~ "PIT",
+                            Method %in% c("photo-quadrat",
+                                          "Photo-quadrat",
+                                          "underwater photo transect") ~ "Photo-quadrat",
+                            Method %in% c("visual census",
+                                          "visual quadrat estimation",
+                                          "vis est.") ~ "Visual census",
+                            Method == "video-transect" ~ "Video transect",
+                            TRUE ~ "Unknown")) %>% 
+  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
+  group_by(Method, Year) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  complete(Method, fill = list(Abs = 0)) %>% 
+  group_by(Year) %>% 
+  mutate(Rel = (Abs/sum(Abs))*100)
+
+# 2. Define label positions ----
+
+data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
+                            x = c(1995, 2012, 2003, 1989, 2001, 1990),
+                            y = c(0.94, 0.75, 0.5, 0.65, 0.22, 0.22))
+
+# 3. Make the plot ----
+
+ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)) +
+  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.8) +
+  geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
+  # Alternative using geom_stream_label but less precise
+  #geom_stream_label(type = "proportional", family = font_choose_graph) +
+  scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  lims(x = c(1980, 2020)) +
+  labs(y = "Percentage of surveys", x = "Year")
+
+# 4. Save the plot ----
+
+ggsave(filename = "../figs/02_evolution-methods-used_streamplot.png", height = 4, width = 8)
+
+# 5. Remove useless objects ----
+
+rm(data_method, data_method_label)
+
+```
+
+# 4. Misc
+
+## 4.1 Monitoring duration
+
+```{r fig.width=6, fig.height=5}
+
+# 1. Transform the data ----
+
+data_duration <- data_gcrmn_sites %>% 
+  st_drop_geometry() %>% 
+  group_by(interval_class) %>% 
+  summarise(n_abs = n()) %>% 
+  ungroup() %>% 
+  mutate(n_rel = (n_abs/sum(n_abs))*100)
+
+# 2. Make the plot ----
+
+plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)) +
+  geom_bar(stat = "identity", aes(fill = interval_class), show.legend = FALSE, col = "black") +
+  scale_fill_manual(values = palette_duration) +
+  lims(y = c(0, 100)) +
+  labs(x = "Monitoring duration (years)", y = "Sites (%)")
+
+```
+
+## 4.2 Surveys by year
+
+```{r}
+
+# 1. Modify the data ----
+
+data_year <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year) %>% 
+  distinct(.)
+
+# 2. Make the plot ----
+
+plot_year <- ggplot(data_year, aes(x = Year)) +
+  # By default its density, width*density*100 gives percentage
+  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
+                 color = col_color_graph, fill = col_fill_graph) +
+  lims(y = c(0, 10)) +
+  labs(x = "Year", y = "Surveys (%)")
+
+```
+
+## 4.3 Surveys by depth
+
+```{r}
+
+# 1. Modify the data ----
+
+data_depth <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year, Depth) %>% 
+  distinct(.)
+
+# 2. Make the plot ----
+
+plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
+  # By default its density, width*density*100 gives percentage
+  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
+                 color = col_color_graph, fill = col_fill_graph) +
+  lims(x = c(0, 40), y = c(0, 30)) +
+  labs(x = "Depth (m)", y = "Surveys (%)")
+
+```
+
+## 4.4 plot assemblage
+
+```{r}
+
+# 1. Make the plot ----
+
+plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "C"))
+
+# 2. Save the plot ----
+
+ggsave(filename = "../figs/03_combined-plots-distri-year-depth-duration.png", height = 3, width = 10)
+
+# 3. Remove useless objects ----
+
+rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
+
+```
+
+# 5. Taxonomic resolution
+
+```{r}
+
+# 1. Filter and transform the data ----
+
+data_taxo <- data_gcrmn %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Year, Category, Group, Family, Genus, Species) %>% 
+  mutate(Tax_lvl = case_when(!(is.na(Species)) ~ "Species",
+                             !(is.na(Genus)) ~ "Genus",
+                             !(is.na(Family)) ~ "Family",
+                             !(is.na(Group)) ~ "Group",
+                             !(is.na(Category)) ~ "Category")) %>%
+  mutate(Tax_lvl = fct_relevel(Tax_lvl, c("Category", "Group", "Family", "Genus", "Species"))) %>% 
+  group_by(Year, Tax_lvl) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  complete(Tax_lvl, fill = list(Abs = 0)) %>% 
+  group_by(Year) %>% 
+  mutate(Rel = (Abs/sum(Abs))*100)
+
+# 2. Define label positions ----
+
+data_taxo_label <- tibble(Tax_lvl = c("Category", "Group", "Family", "Genus", "Species"),
+                          x = c(1990, 2010, 1998, 2000, 2010),
+                          y = c(0.875, 0.65, 0.4, 0.2, 0.1))
+
+# 3. Make the plot ----
+
+ggplot(data = data_taxo, aes(x = Year, y = Rel, fill = Tax_lvl, label = Tax_lvl)) +
+  geom_stream(type = "proportional", show.legend = FALSE) +
+  geom_text(data = data_taxo_label, aes(x = x, y = y, label = Tax_lvl), family = font_choose_graph) +
+  # Alternative using geom_stream_label but less precise
+  #geom_stream_label(type = "proportional", family = font_choose_graph) +
+  scale_fill_manual(values = c("#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  lims(x = c(1980, 2020)) +
+  labs(y = "Percentage of surveys", x = "Year")
+
+# 4. Save the plot ----
+
+ggsave(filename = "../figs/04_evolution-taxo-resolution_streamplot.png", height = 4, width = 8)
+
+# 5. Remove useless objects ----
+
+rm(data_taxo, data_taxo_label)
+
+```
+
+# 6. Comparison between ecoregions
+
+## 6.1 Calculation of descriptors
+
+```{r}
+
+# 1. Load and transform Marine Ecoregions of the World (MEOW) data ----
+
+data_meow <- read_sf("../data/02_marine-ecoregions-of-the-world/Marine_Ecoregions_Of_the_World__MEOW_.shp") %>% 
+  st_transform(crs = 4326) %>% 
+  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
+  st_make_valid()
+
+# 2. Join MEOW and GCRMN data ----
+
+data_gcrmn_meow <- data_gcrmn %>% 
+  drop_na(Latitude, Longitude) %>% 
+  st_as_sf(., coords = c("Longitude", "Latitude"), crs = 4326) %>% 
+  st_intersection(., data_meow) %>% 
+  mutate(geometry2 = str_remove_all(geometry, "c|\\(|\\)"),
+         Longitude = as.numeric(str_split_fixed(geometry2, ",", 2)[,1]),
+         Latitude = as.numeric(str_split_fixed(geometry2, ",", 2)[,2])) %>% 
+  st_drop_geometry() %>% 
+  select(-geometry2)
+
+# 3. Calculation of sites ----
+
+data_descriptors <- data_gcrmn_meow %>% 
+  select(Latitude, Longitude, ECOREGION) %>% 
+  distinct() %>% 
+  group_by(ECOREGION) %>% 
+  summarise(n_sites = n())
+
+# 4. Calculation of observations ----
+
+data_descriptors <- data_gcrmn_meow %>% 
+  group_by(ECOREGION) %>% 
+  summarise(n_obs = n()) %>% 
+  left_join(data_descriptors, .)
+  
+# 5. Calculation of surveys ----
+
+data_descriptors <- data_gcrmn_meow %>% 
+  select(Latitude, Longitude, Year, ECOREGION) %>% 
+  distinct() %>% 
+  group_by(ECOREGION) %>% 
+  summarise(n_surveys = n()) %>% 
+  left_join(data_descriptors, .)
+
+# 6. Calculation of monitoring duration ----
+
+data_descriptors <- data_gcrmn_meow %>% 
+  group_by(Area, Country, Location, Site, Latitude, Longitude, ECOREGION) %>% 
+  summarise(interval_years = max(Year, na.rm = TRUE) - min(Year, na.rm = TRUE)) %>%
+  drop_na(interval_years) %>% 
+  ungroup() %>% 
+  mutate(interval_class = cut(interval_years, 
+                              breaks = c(-Inf, 1, 5, 10, 15, Inf),
+                              labels = c("n_1", "n_2_5", "n_6_10", "n_11_15", "n_15"))) %>% 
+  group_by(ECOREGION, interval_class) %>%
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = interval_class, values_from = n, values_fill = 0) %>% 
+  left_join(data_descriptors, .)
+
+# 7. Number of years with data ---- 
+
+data_descriptors <- data_gcrmn_meow %>% 
+  select(ECOREGION, Year) %>% 
+  distinct() %>% 
+  group_by(ECOREGION) %>% 
+  summarise(n_years = n(),
+            first_year = min(Year)) %>% 
+  left_join(data_descriptors, .)
+
+# 8. Add reef surfaces ----
+
+load("../data/04_reef-surface-by-ecoregion.RData")
+
+data_descriptors <- left_join(data_descriptors, data_surface)
+
+```
+
+## 6.2 PCA
+
+```{r}
+
+library(FactoMineR)
+
+PCA(data_descriptors[,2:12])
+
+```
+
+## 6.3 Effort vs surface
+
+```{r}
+
+# 1. Transform descriptors in relative ----
+
+data_descriptors_rel <- data_descriptors %>% 
+  mutate_at(2:ncol(.), ~ (./sum(., na.rm = TRUE))*100)
+
+```
+
+### Sites
+
+```{r}
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors_rel, aes(x = area, y = n_sites, label = ECOREGION)) +
+  geom_point() +
+  geom_label() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
+
+# 2. Save the plot ----
+
+ggsave(filename = "../figs/05_biplot-comparison-reef-surface-sites.png", height = 8, width = 8)
+
+```
+
+### Surveys
+
+```{r}
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors_rel, aes(x = area, y = n_surveys, label = ECOREGION)) +
+  geom_point() +
+  geom_label() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
+
+# 2. Save the plot ----
+
+ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", height = 8, width = 8)
+
+```
+
+## 6.4 Maps
+
+```{r}
+
+# 1. Join MEOW with descriptors ----
+
+data_meow <- read_sf("../data/02_marine-ecoregions-of-the-world/Marine_Ecoregions_Of_the_World__MEOW_.shp") %>% 
+  st_transform(crs = 4326) %>% 
+  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
+  st_make_valid() %>% 
+  left_join(data_descriptors, .) %>% 
+  st_as_sf()
+
+# 2. Make the map ----
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # Site of benthic cover data
+  geom_sf(data = data_meow, aes(fill = n_15)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(override.aes = list(size = 5))) +
+  scale_color_manual(values = palette_duration) +
+  theme_map() +
+  theme(legend.title = element_blank())
+
+```
+
+# 6.5 Relative to reef surface
+
+```{r}
+
+load(file = "../data/04_reef-surface-by-ecoregion.RData")
+
+data_surface <- left_join(data_surface, data_descriptors) %>% 
+  select(-n_1, -n_2_5, -n_6_10, -n_11_15) %>% 
+  mutate(n_sites_100 = (n_sites*1000)/area)
+
+ggplot(data = data_surface) +
+  geom_point(aes(x = ECOREGION, y = n_sites_100))
+  
+hist(data_surface$n_sites_100)
+
 
 ```
 
