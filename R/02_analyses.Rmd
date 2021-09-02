@@ -29,6 +29,8 @@ sf_use_s2(FALSE) # Switch from S2 to GEOS
 library(ggstream)
 library(cowplot)
 library(ggsflabel)
+library(ggtext)
+library(glue)
 
 # 2. Source functions ----
 
@@ -148,10 +150,10 @@ ggplot() +
   geom_sf(data = data_gcrmn_sites, aes(color = interval_class)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(override.aes = list(size = 5))) +
+  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
   scale_color_manual(values = palette_duration) +
   theme_map() +
-  theme(legend.title = element_blank())
+  labs(col = "Monitoring duration (years)")
 
 # 2. Save the map ----
 
@@ -208,7 +210,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -261,7 +263,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -313,7 +315,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -365,7 +367,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -417,7 +419,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -469,7 +471,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -522,7 +524,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -583,7 +585,7 @@ ggplot() +
   geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
+  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
   scale_color_manual(values = palette_duration) +
   # Second data buffer (for borders)
   geom_sf(data = data_buffer, fill = NA, size = 0.75) +
@@ -985,6 +987,29 @@ ggplot(data = data_surface) +
   
 hist(data_surface$n_sites_100)
 
+
+```
+
+```{r fig.height=15, fig.width=5}
+
+# 1. Transform the data ----
+
+data_descriptors <- data_descriptors %>% 
+  mutate(color = "#446cb3",
+         name = glue("{ECOREGION} (<b style='color:{color}'>{ECO_CODE_X}</b>)"),
+         name = fct_rev(name))
+
+# 2. Make the plot ----
+
+ggplot(data = data_descriptors, aes(x = name, y = n_sites)) +
+  geom_point() +
+  coord_flip() +
+  theme(axis.text.y = element_markdown()) +
+  labs(x = NULL)
+  
+# 3. Save the plot ----
+
+ggsave(filename = "../figs/07_ecoregions-sites.png", height = 15, width = 5)
 
 ```
 
