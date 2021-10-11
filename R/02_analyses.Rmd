@@ -737,7 +737,7 @@ plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
 
 ```
 
-## 4.4 plot assemblage
+## 4.4 Plot assemblage
 
 ```{r}
 
@@ -878,13 +878,156 @@ data_descriptors <- data_gcrmn_meow %>%
             first_year = min(Year)) %>% 
   left_join(data_descriptors, .)
 
-# 8. Add reef surfaces ----
+# 8. Add reef surfaces and calculate relative surfaces ----
 
 load("../data/04_reef-surface-by-ecoregion.RData")
 
-data_descriptors <- left_join(data_descriptors, data_surface)
+data_descriptors <- left_join(data_descriptors, data_surface) %>% 
+  mutate(area_total = sum(area)) %>% 
+  group_by(ECOREGION) %>% 
+  mutate(area_rel = (area*100)/area_total) %>% 
+  ungroup() %>% 
+  select(-area_total)
 
 ```
+
+## 6.2 Lollipop
+
+```{r fig.height=15, fig.width=10}
+
+# 1. Transform the data ----
+
+data_descriptors <- data_descriptors %>% 
+  mutate(color = "#446cb3",
+         name = glue("{ECOREGION} (<b style='color:{color}'>{ECO_CODE_X}</b>)"))
+
+# 2. Make the plots ----
+
+# 2.1 Relative coral reefs surface by ecoregion --
+
+plot_area <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = area_rel)) +
+  geom_point() +
+  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = area_rel)) +
+  coord_flip() +
+  theme(axis.text.y = element_markdown()) +
+  labs(x = NULL, y ="Surface (%)")
+
+# 2.2 Number of surveys by ecoregion --
+
+plot_surveys <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_surveys)) +
+  geom_point() +
+  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_surveys)) +
+  coord_flip() +
+  theme(axis.text.y = element_markdown()) +
+  labs(x = NULL, y = "Number of surveys") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+# 2.3 Number of years with data by ecoregion --
+
+plot_years <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_years)) +
+  geom_point() +
+  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_years)) +
+  coord_flip() +
+  theme(axis.text.y = element_markdown()) +
+  labs(x = NULL) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+# 3. Assemble the plots ----
+
+plot_grid(plot_area, plot_surveys, plot_years, nrow = 1, rel_widths = c(1, 0.425, 0.425))
+
+# 4. Save the plot ----
+
+ggsave(filename = "../figs/07_ecoregions-data-descriptors.png", height = 15, width = 5)
+
+# 5. Remove useless objects ----
+
+rm(plot_area, plot_surveys, plot_years)
+
+```
+
+## 6.3 Biplot
+
+```{r}
+
+# 1. Transform n_surveys in relative ----
+
+data_descriptors <- data_descriptors %>% 
+  mutate(survey_total = sum(n_surveys)) %>% 
+  group_by(ECOREGION) %>% 
+  mutate(surveys_rel = (n_surveys*100)/survey_total) %>% 
+  select(-survey_total)
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
+  geom_point() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
+
+ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
+  geom_point() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
+  xlim(0, 2.5) +
+  ylim(0, 2.5)
+
+# 2. Save the plot ----
+
+ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", height = 8, width = 8)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 6.2 PCA
 
@@ -892,7 +1035,10 @@ data_descriptors <- left_join(data_descriptors, data_surface)
 
 library(FactoMineR)
 
-PCA(data_descriptors[,2:12])
+
+
+PCA(data_descriptors[,c(2, 4:10, 13)])
+PCA(data_descriptors[,c(4:10, 13)])
 
 ```
 
@@ -907,7 +1053,6 @@ data_descriptors_rel <- data_descriptors %>%
 
 ```
 
-### Sites
 
 ```{r}
 
@@ -925,23 +1070,8 @@ ggsave(filename = "../figs/05_biplot-comparison-reef-surface-sites.png", height 
 
 ```
 
-### Surveys
 
-```{r}
 
-# 1. Make the plot ----
-
-ggplot(data = data_descriptors_rel, aes(x = area, y = n_surveys, label = ECOREGION)) +
-  geom_point() +
-  geom_label() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", height = 8, width = 8)
-
-```
 
 ## 6.4 Maps
 
@@ -972,46 +1102,53 @@ ggplot() +
 
 ```
 
-# 6.5 Relative to reef surface
+```{r}
+
+# 1. Import data ----
+
+data_reefs <- read_sf("./../data/01_reefs-distribution-wri/reef_500_poly.shp") %>% 
+  st_transform(crs = 4326) %>% 
+  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
+  st_make_valid()
+
+# 2. Create the grid of 5° ----
+
+AA <- st_make_grid(data_reefs, cellsize = 1) %>% 
+  st_as_sf()
+
+# 3. Test if the grid is correct ----
+
+ggplot() +
+  geom_sf(data = AA) +
+  geom_sf(data = data_reefs)
+
+# 5. Join to get grid cells containing coral reefs ----
+
+BB <- st_join(AA, data_reefs)
+
+# 6. Plot ----
+
+ggplot() +
+  #geom_sf(data = AAA) +
+  geom_sf(data = BB, aes(fill = GRIDCODE)) +
+  geom_sf(data = data_reefs, color = "red")
+
+```
 
 ```{r}
 
-load(file = "../data/04_reef-surface-by-ecoregion.RData")
+AA <- st_make_grid(data_reefs, cellsize = 0.25)
 
-data_surface <- left_join(data_surface, data_descriptors) %>% 
-  select(-n_1, -n_2_5, -n_6_10, -n_11_15) %>% 
-  mutate(n_sites_100 = (n_sites*1000)/area)
+ggplot() +
+  geom_sf(data = AA) +
+  geom_sf(data = data_reefs) +
+  coord_sf(xlim = c(40, 45.5), ylim = c(-12, -13.5)) 
 
-ggplot(data = data_surface) +
-  geom_point(aes(x = ECOREGION, y = n_sites_100))
-  
-hist(data_surface$n_sites_100)
+
 
 
 ```
 
-```{r fig.height=15, fig.width=5}
-
-# 1. Transform the data ----
-
-data_descriptors <- data_descriptors %>% 
-  mutate(color = "#446cb3",
-         name = glue("{ECOREGION} (<b style='color:{color}'>{ECO_CODE_X}</b>)"),
-         name = fct_rev(name))
-
-# 2. Make the plot ----
-
-ggplot(data = data_descriptors, aes(x = name, y = n_sites)) +
-  geom_point() +
-  coord_flip() +
-  theme(axis.text.y = element_markdown()) +
-  labs(x = NULL)
-  
-# 3. Save the plot ----
-
-ggsave(filename = "../figs/07_ecoregions-sites.png", height = 15, width = 5)
-
-```
 
 # Reproducibility
 
