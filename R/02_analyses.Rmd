@@ -31,6 +31,7 @@ library(cowplot)
 library(ggsflabel)
 library(ggtext)
 library(glue)
+library(ggrepel)
 
 # 2. Source functions ----
 
@@ -96,17 +97,6 @@ background_map_border <- list(cbind(longs, lats)) %>%
   st_polygon() %>%
   st_sfc(crs = 4326) %>% 
   st_sf() %>%
-  st_transform(crs = crs_selected)
-
-# 3. Create polygons for tropics ----
-
-data_tropics <- tibble(tropic = c("Equator", "Equator", "Cancer", "Cancer", "Capricorne", "Capricorne"),
-                       lat = c(0, 0, 23.43667, 23.43667, -23.43667, -23.43667),
-                       long = c(-180, 180, -180, 180, -180, 180)) %>% 
-  st_as_sf(coords = c("long", "lat"), crs = 4326) %>% 
-  group_by(tropic) %>% 
-  summarize() %>%
-  st_cast("LINESTRING") %>% 
   st_transform(crs = crs_selected)
 
 ```
@@ -891,6 +881,54 @@ data_descriptors <- left_join(data_descriptors, data_surface) %>%
 
 ```
 
+```{r}
+
+# 1. Import data on coral reefs distribution ----
+
+data_reefs <- read_sf("./../data/01_reefs-distribution-wri/reef_500_poly.shp") %>% 
+  st_transform(crs = 4326) %>% 
+  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
+  st_make_valid()
+
+# 2. Create a grid cells of 0.5° ----
+
+grid_reefs <- st_make_grid(data_reefs, cellsize = 1) %>% 
+  st_as_sf() %>% 
+  st_filter(., data_reefs) # Filter grid cells containing coral reefs
+
+# 3. Make intersection with MEOW ----
+
+grid_reefs <- st_intersection(grid_reefs, data_meow)
+
+# 4. Count number of polygon by MEOW ---- 
+
+pixel_total <- grid_reefs %>% 
+  st_drop_geometry() %>% 
+  group_by(ECOREGION, ECO_CODE_X) %>% 
+  count(name = "n_total")
+
+# 5. Count number of polygon with monitoring data by MEOW ---- 
+
+pixel_monitoring <- data_gcrmn_sites %>% 
+  st_transform(crs = 4326) %>% 
+  st_filter(grid_reefs, .) %>% 
+  st_drop_geometry() %>% 
+  group_by(ECOREGION, ECO_CODE_X) %>% 
+  count(name = "n_monitoring")
+
+# 6. Join with other data descriptors ----
+
+data_descriptors <- left_join(pixel_total, pixel_monitoring) %>% 
+  mutate(n_monitoring = replace_na(n_monitoring, replace = 0),
+         n_percent = (n_monitoring/n_total)*100) %>% 
+  left_join(data_descriptors, .)
+
+# 7. Remove useless objects ----
+
+rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring)
+
+```
+
 ## 6.2 Lollipop
 
 ```{r fig.height=15, fig.width=10}
@@ -936,17 +974,29 @@ plot_years <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
+# 2.4 Number of pixel with data by ecoregion --
+
+plot_pixel <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_percent)) +
+  geom_point() +
+  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_percent)) +
+  coord_flip() +
+  theme(axis.text.y = element_markdown()) +
+  labs(x = NULL) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
 # 3. Assemble the plots ----
 
-plot_grid(plot_area, plot_surveys, plot_years, nrow = 1, rel_widths = c(1, 0.425, 0.425))
+plot_grid(plot_area, plot_surveys, plot_years, plot_pixel, nrow = 1, rel_widths = c(1, 0.36, 0.36, 0.36))
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/07_ecoregions-data-descriptors.png", height = 15, width = 5)
+ggsave(filename = "../figs/08_ecoregions-data-descriptors.png", height = 15, width = 14)
 
 # 5. Remove useless objects ----
 
-rm(plot_area, plot_surveys, plot_years)
+rm(plot_area, plot_surveys, plot_years, plot_pixel)
 
 ```
 
@@ -962,19 +1012,47 @@ data_descriptors <- data_descriptors %>%
   mutate(surveys_rel = (n_surveys*100)/survey_total) %>% 
   select(-survey_total)
 
+# 2. Select MEOW to label ----
+
+data_descriptors <- data_descriptors %>% 
+  mutate(labelisation = case_when(area_rel > 4 ~ glue("{ECOREGION} (<b style='color:{color}'>{ECO_CODE_X}</b>)"),
+                                  TRUE ~ NA_character_))
+
+
+
 # 1. Make the plot ----
 
-ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
-  geom_point() +
+AA <- ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel, label = labelisation)) +
+  geom_point(shape = 21, fill = col_color_graph, size = 2) +
+  geom_richtext() +
   geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
+  lims(x = c(0, 12.5), y = c(0, 12.5))
+
+
+AA
+
+library(plotly)
+
+ggplotly(AA)
+
+
+
+
+
+
+
+ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
+  geom_point(shape = 21, fill = col_color_graph, size = 2) +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
+  lims(x = c(0, 12.5), y = c(0, 12.5))
 
 ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
   geom_point() +
   geom_abline(intercept = 0) +
   labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
-  xlim(0, 2.5) +
-  ylim(0, 2.5)
+  lims(x = c(0, 2.5), y = c(0, 2.5))
 
 # 2. Save the plot ----
 
@@ -1104,51 +1182,9 @@ ggplot() +
 
 ```{r}
 
-# 1. Import data ----
-
-data_reefs <- read_sf("./../data/01_reefs-distribution-wri/reef_500_poly.shp") %>% 
-  st_transform(crs = 4326) %>% 
-  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
-  st_make_valid()
-
-# 2. Create the grid of 5° ----
-
-AA <- st_make_grid(data_reefs, cellsize = 1) %>% 
-  st_as_sf()
-
-# 3. Test if the grid is correct ----
-
-ggplot() +
-  geom_sf(data = AA) +
-  geom_sf(data = data_reefs)
-
-# 5. Join to get grid cells containing coral reefs ----
-
-BB <- st_join(AA, data_reefs)
-
-# 6. Plot ----
-
-ggplot() +
-  #geom_sf(data = AAA) +
-  geom_sf(data = BB, aes(fill = GRIDCODE)) +
-  geom_sf(data = data_reefs, color = "red")
-
-```
-
-```{r}
-
-AA <- st_make_grid(data_reefs, cellsize = 0.25)
-
-ggplot() +
-  geom_sf(data = AA) +
-  geom_sf(data = data_reefs) +
-  coord_sf(xlim = c(40, 45.5), ylim = c(-12, -13.5)) 
-
-
 
 
 ```
-
 
 # Reproducibility
 
