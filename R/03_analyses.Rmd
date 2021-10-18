@@ -1069,6 +1069,16 @@ ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", heigh
 
 
 
+```{r}
+
+data_gdp <- read.csv("./../data/GDP.csv") %>% 
+  select(X.1, X.2) %>% 
+  slice(5:210) %>% 
+  rename(Country = X.1, GDP = X.2) %>% 
+  mutate(GDP = str_remove_all(GDP, ","),
+         GDP = as.numeric(GDP))
+
+```
 
 
 
