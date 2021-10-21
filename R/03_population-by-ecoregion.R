@@ -26,18 +26,14 @@ data_meowreefs <- as_Spatial(data_meowreefs)
 
 # 3. Extract mean human population density ----
 
-data_pop <- raster::extract(data_pop, data_meowreefs, fun = mean, na.rm = TRUE, sp = TRUE)
+data_pop <- raster::extract(data_pop, data_meowreefs, fun = sum, na.rm = TRUE, sp = TRUE)
 
-data_pop <- as_tibble(data_pop@data) %>% 
+data_meowpop <- as_tibble(data_pop@data) %>% 
   rename(population = gpw_v4_population_density_rev11_2020_2pt5_min) %>% 
-  dplyr::select(ECOREGION, population)
+  dplyr::select(ECOREGION, population) %>% 
+  mutate(population = ifelse(ECOREGION == "Clipperton", 0, population)) %>% 
+  mutate_at("population", ~replace(., is.nan(.), 0))
 
 # 4. Export the data ----
 
-save(data_pop, file = "data/04_meow-population.RData")
-
-
-
-
-
-
+save(data_meowpop, file = "data/04_meow-population.RData")

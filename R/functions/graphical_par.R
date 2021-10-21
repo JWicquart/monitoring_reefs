@@ -21,6 +21,8 @@ palette_duration <- c("1" = "#2abb9b",
                       "11-15" = "#f4b350",
                       ">15" = "#e74c3c")
 
+palette_fill <- c("#2c82c9", "#f5ab35", "#cf000f")
+
 # 4. Define a common crs ----
 
 crs_selected <- "+proj=eqearth"

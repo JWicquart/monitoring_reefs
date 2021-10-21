@@ -51,9 +51,10 @@ data_eez <- left_join(data_eez, data_gdp) %>%
 
 data_meowgdp <- st_join(data_meowreefs, data_eez) %>% 
   group_by(ECOREGION) %>% 
-  summarise(GDP = median(GDP))
+  summarise(GDP = median(GDP)) %>% 
+  st_drop_geometry()
 
 # 5. Export the data ----
 
-save(data_meowgdp, file = "data/xx_meow-with-coral-reefs-gdp.RData")
+save(data_meowgdp, file = "data/04_meow-with-coral-reefs-gdp.RData")
 

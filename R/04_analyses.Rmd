@@ -32,6 +32,8 @@ library(ggsflabel)
 library(ggtext)
 library(glue)
 library(ggrepel)
+library(GGally) # For ggpairs
+library(FactoMineR) # For PCA
 
 # 2. Source functions ----
 
@@ -872,12 +874,27 @@ data_descriptors <- data_gcrmn_meow %>%
 
 load("../data/04_reef-surface-by-ecoregion.RData")
 
-data_descriptors <- left_join(data_descriptors, data_surface) %>% 
+data_descriptors <- left_join(data_surface, data_descriptors) %>% 
+  ungroup() %>% 
   mutate(area_total = sum(area)) %>% 
   group_by(ECOREGION) %>% 
   mutate(area_rel = (area*100)/area_total) %>% 
   ungroup() %>% 
   select(-area_total)
+
+# 9. Add human population density and GDP ----
+
+load("./../data/04_meow-with-coral-reefs-gdp.RData")
+
+load("./../data/04_meow-population.RData")
+
+data_descriptors <- left_join(data_meowpop, data_descriptors) %>% 
+  left_join(., data_meowgdp) %>% 
+  mutate_at(5:13, ~replace_na(., 0))
+
+# 10. Remove useless objects ----
+
+rm(data_meowgdp, data_meowpop, data_surface)
 
 ```
 
@@ -921,7 +938,9 @@ pixel_monitoring <- data_gcrmn_sites %>%
 data_descriptors <- left_join(pixel_total, pixel_monitoring) %>% 
   mutate(n_monitoring = replace_na(n_monitoring, replace = 0),
          n_percent = (n_monitoring/n_total)*100) %>% 
-  left_join(data_descriptors, .)
+  left_join(data_descriptors, .) %>% 
+  left_join(as.tibble(data_meowreefs), .) %>% 
+  st_as_sf()
 
 # 7. Remove useless objects ----
 
@@ -929,7 +948,21 @@ rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring)
 
 ```
 
-## 6.2 Lollipop
+## 6.2 Pairs
+
+```{r}
+
+# 1. Make the plot ----
+
+ggpairs(data_descriptors[,15:30])
+
+# 2. Save the plot ----
+
+ggsave("./../figs/08_pairs-of-data-descriptors.png", height = 20, width = 20)
+
+```
+
+## 6.3 Lollipop
 
 ```{r fig.height=15, fig.width=10}
 
@@ -988,11 +1021,11 @@ plot_pixel <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel
 
 # 3. Assemble the plots ----
 
-plot_grid(plot_area, plot_surveys, plot_years, plot_pixel, nrow = 1, rel_widths = c(1, 0.36, 0.36, 0.36))
+plot_grid(plot_area, plot_surveys, plot_years, plot_pixel, nrow = 1, rel_widths = c(1, 0.35, 0.35, 0.35))
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/08_ecoregions-data-descriptors.png", height = 15, width = 14)
+ggsave(filename = "../figs/09_ecoregions-data-descriptors.png", height = 15, width = 14)
 
 # 5. Remove useless objects ----
 
@@ -1000,83 +1033,69 @@ rm(plot_area, plot_surveys, plot_years, plot_pixel)
 
 ```
 
-## 6.3 Biplot
+## 6.4 Maps of descriptors
+
+### 6.4.1 Relative coral reef area
 
 ```{r}
 
-# 1. Transform n_surveys in relative ----
+# 1. Make the map ----
 
-data_descriptors <- data_descriptors %>% 
-  mutate(survey_total = sum(n_surveys)) %>% 
-  group_by(ECOREGION) %>% 
-  mutate(surveys_rel = (n_surveys*100)/survey_total) %>% 
-  select(-survey_total)
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors, aes(fill = area_rel)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  # Set guide colours
+  scale_fill_gradientn(colours = palette_fill, limits = c(0, 7.002), breaks = c(0, 1, 2, 3, 4, 5, 6, 7)) +
+  guides(fill = guide_colourbar(title = "Relative coral reef area (%)",
+                                title.position = "top",
+                                barwidth = 18,
+                                barheight = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                label.theme = element_text(family = font_choose_map,
+                                                           size = 10),
+                                ticks.colour = "black")) +  
+  theme_map()
 
-# 2. Select MEOW to label ----
+# 2. Save the map ----
 
-data_descriptors <- data_descriptors %>% 
-  mutate(labelisation = case_when(area_rel > 4 ~ glue("{ECOREGION} (<b style='color:{color}'>{ECO_CODE_X}</b>)"),
-                                  TRUE ~ NA_character_))
-
-
-
-# 1. Make the plot ----
-
-AA <- ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel, label = labelisation)) +
-  geom_point(shape = 21, fill = col_color_graph, size = 2) +
-  geom_richtext() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
-  lims(x = c(0, 12.5), y = c(0, 12.5))
-
-
-AA
-
-library(plotly)
-
-ggplotly(AA)
-
-
-
-
-
-
-
-ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
-  geom_point(shape = 21, fill = col_color_graph, size = 2) +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
-  lims(x = c(0, 12.5), y = c(0, 12.5))
-
-ggplot(data = data_descriptors, aes(x = area_rel, y = surveys_rel)) +
-  geom_point() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)") +
-  lims(x = c(0, 2.5), y = c(0, 2.5))
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/05_biplot-comparison-reef-surface-surveys.png", height = 8, width = 8)
+ggsave("../figs/01_global-map-relative-reef-area.png", height = 6, width = 10)
 
 ```
 
-
-
-
-
-
-
-
-
+### 6.4.2 Pixel with data
 
 ```{r}
 
-data_gdp <- read.csv("./../data/GDP.csv") %>% 
-  select(X.1, X.2) %>% 
-  slice(5:210) %>% 
-  rename(Country = X.1, GDP = X.2) %>% 
-  mutate(GDP = str_remove_all(GDP, ","),
-         GDP = as.numeric(GDP))
+# 1. Make the map ----
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors, aes(fill = n_percent)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  # Set guide colours
+  scale_fill_gradientn(colours = palette_fill, limits = c(0, 100), breaks = c(0, 25, 50, 75, 100)) +
+  guides(fill = guide_colourbar(title = "Percentage of pixel with data",
+                                title.position = "top",
+                                barwidth = 18,
+                                barheight = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                label.theme = element_text(family = font_choose_map,
+                                                           size = 10),
+                                ticks.colour = "black")) +  
+  theme_map()
+
+# 2. Save the map ----
+
+ggsave("../figs/01_global-map-relative-pixel-with-data.png", height = 6, width = 10)
 
 ```
 
@@ -1111,24 +1130,104 @@ data_gdp <- read.csv("./../data/GDP.csv") %>%
 
 
 
-
-
-
-
-
-
-## 6.2 PCA
+## 6.4 PCA
 
 ```{r}
 
-library(FactoMineR)
+# 1. Make the PCA ----
 
+test <- as.tibble(data_descriptors)
 
+res_pca <- PCA(test[,c(15, 16, 23, 26, 27)])
 
-PCA(data_descriptors[,c(2, 4:10, 13)])
-PCA(data_descriptors[,c(4:10, 13)])
+# 2. Assemble plots ----
+
+plot_grid(plot.PCA(res_pca, choix = "ind"), 
+          plot.PCA(res_pca, choix = "var"))
+
+# 3. Save the plot ----
+
+ggsave(filename = "./../figs/10_pca-data-descriptors.png")
 
 ```
+
+```{r}
+
+AA <- HCPC(res_pca, nb.clust=4, iter.max = 100)
+
+BB <- left_join(data_descriptors, AA$data.clust) %>% 
+  select(-color, -name) %>% 
+  left_join(as.tibble(data_meowreefs), .) %>% 
+  st_as_sf()
+
+# 1. Make the map ----
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = BB, aes(fill = clust)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
+  scale_color_manual(values = palette_duration) +
+  theme_map() +
+  labs(col = "Monitoring duration (years)")
+
+```
+
+
+
+
+
+## 6.5 Table
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 6.3 Effort vs surface
 
@@ -1155,44 +1254,6 @@ ggplot(data = data_descriptors_rel, aes(x = area, y = n_sites, label = ECOREGION
 # 2. Save the plot ----
 
 ggsave(filename = "../figs/05_biplot-comparison-reef-surface-sites.png", height = 8, width = 8)
-
-```
-
-
-
-
-## 6.4 Maps
-
-```{r}
-
-# 1. Join MEOW with descriptors ----
-
-data_meow <- read_sf("../data/02_marine-ecoregions-of-the-world/Marine_Ecoregions_Of_the_World__MEOW_.shp") %>% 
-  st_transform(crs = 4326) %>% 
-  st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
-  st_make_valid() %>% 
-  left_join(data_descriptors, .) %>% 
-  st_as_sf()
-
-# 2. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # Site of benthic cover data
-  geom_sf(data = data_meow, aes(fill = n_15)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(override.aes = list(size = 5))) +
-  scale_color_manual(values = palette_duration) +
-  theme_map() +
-  theme(legend.title = element_blank())
-
-```
-
-```{r}
-
-
 
 ```
 
