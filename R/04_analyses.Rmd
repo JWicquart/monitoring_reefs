@@ -1033,9 +1033,126 @@ rm(plot_area, plot_surveys, plot_years, plot_pixel)
 
 ```
 
-## 6.4 Maps of descriptors
+## 6.4 Effort vs surface
 
-### 6.4.1 Relative coral reef area
+### 6.4.1 Surveys
+
+```{r}
+
+data_descriptors2 <- data_descriptors %>% 
+  mutate(total_surveys = sum(n_surveys)) %>% 
+  group_by(ECOREGION) %>% 
+  mutate(surveys_rel = (n_surveys*100)/total_surveys) %>% 
+  ungroup() %>% 
+  select(-total_surveys) %>% 
+  mutate(survey_deviation = surveys_rel - area_rel) %>% 
+  st_as_sf()
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors2, aes(x = area_rel, y = surveys_rel, label = ECOREGION)) +
+  geom_point() +
+  geom_label() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors2, aes(x = area_rel, y = survey_deviation, label = ECOREGION)) +
+  geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation)) +
+  geom_point(shape = 21, col = "white", fill = "black", size = 3) +
+  geom_hline(yintercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Deviation from expected") +
+  lims(y = c(-6, 6))
+
+# 1. Make the plot ----
+
+palette_fill <- c("#2c82c9", "white", "#cf000f")
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors2, aes(fill = survey_deviation)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  # Set guide colours
+  scale_fill_gradientn(colours = palette_fill, limits = c(-6, 6), breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
+  guides(fill = guide_colourbar(title = "Deviation from expected",
+                                title.position = "top",
+                                barwidth = 18,
+                                barheight = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                label.theme = element_text(family = font_choose_map,
+                                                           size = 10),
+                                ticks.colour = "black")) +  
+  theme_map()
+
+```
+
+### 6.4.2 Pixel
+
+```{r}
+
+data_descriptors2 <- data_descriptors %>% 
+  mutate(total_surveys = sum(n_surveys)) %>% 
+  group_by(ECOREGION) %>% 
+  mutate(surveys_rel = (n_surveys*100)/total_surveys) %>% 
+  ungroup() %>% 
+  select(-total_surveys) %>% 
+  mutate(survey_deviation = surveys_rel - area_rel) %>% 
+  st_as_sf()
+
+quantile(data_descriptors2$n_percent)
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors2, aes(x = area_rel, y = n_percent, label = ECOREGION)) +
+  geom_point() +
+  geom_label() +
+  geom_abline(intercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
+
+# 1. Make the plot ----
+
+ggplot(data = data_descriptors2, aes(x = area_rel, y = survey_deviation, label = ECOREGION)) +
+  geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation)) +
+  geom_point(shape = 21, col = "white", fill = "black", size = 3) +
+  geom_hline(yintercept = 0) +
+  labs(x = "Relative reef surface (%)", y = "Deviation from expected") +
+  lims(y = c(-6, 6))
+
+# 1. Make the plot ----
+
+palette_fill <- c("#2c82c9", "white", "#cf000f")
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors2, aes(fill = n_percent)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  # Set guide colours
+  scale_fill_gradientn(colours = palette_fill, limits = c(0, 100), breaks = c(0, 25, 50, 75, 100)) +
+  guides(fill = guide_colourbar(title = "Deviation from expected",
+                                title.position = "top",
+                                barwidth = 18,
+                                barheight = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                label.theme = element_text(family = font_choose_map,
+                                                           size = 10),
+                                ticks.colour = "black")) +  
+  theme_map()
+
+
+```
+
+## 6.5 Maps of descriptors
+
+### 6.5.1 Relative coral reef area
 
 ```{r}
 
@@ -1067,7 +1184,7 @@ ggsave("../figs/01_global-map-relative-reef-area.png", height = 6, width = 10)
 
 ```
 
-### 6.4.2 Pixel with data
+### 6.5.2 Pixel with data
 
 ```{r}
 
@@ -1099,38 +1216,7 @@ ggsave("../figs/01_global-map-relative-pixel-with-data.png", height = 6, width =
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 6.4 PCA
+## 6.6 PCA
 
 ```{r}
 
@@ -1180,80 +1266,13 @@ ggplot() +
 
 
 
-## 6.5 Table
+## 6.7 Table
 
 ```{r}
 
 
 
 
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 6.3 Effort vs surface
-
-```{r}
-
-# 1. Transform descriptors in relative ----
-
-data_descriptors_rel <- data_descriptors %>% 
-  mutate_at(2:ncol(.), ~ (./sum(., na.rm = TRUE))*100)
-
-```
-
-
-```{r}
-
-# 1. Make the plot ----
-
-ggplot(data = data_descriptors_rel, aes(x = area, y = n_sites, label = ECOREGION)) +
-  geom_point() +
-  geom_label() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/05_biplot-comparison-reef-surface-sites.png", height = 8, width = 8)
 
 ```
 
