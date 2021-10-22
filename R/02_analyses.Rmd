@@ -868,33 +868,29 @@ data_descriptors <- data_gcrmn_meow %>%
   group_by(ECOREGION) %>% 
   summarise(n_years = n(),
             first_year = min(Year)) %>% 
+  ungroup() %>% 
   left_join(data_descriptors, .)
 
-# 8. Add reef surfaces and calculate relative surfaces ----
+# 8. Add reef surfaces ----
 
 load("../data/04_reef-surface-by-ecoregion.RData")
 
 data_descriptors <- left_join(data_surface, data_descriptors) %>% 
+  # Replace NA with 0 for some variables
+  mutate_at(vars(starts_with("n_")), ~replace_na(., 0))
+
+# 9. Calculate relative frequency ----
+
+data_descriptors <- data_descriptors %>% 
+  pivot_longer("area":"n_years", names_to = "var_names", values_to = "abs") %>% # Select variables to shift in relative freq here
+  group_by(var_names) %>% 
+  mutate(total = sum(abs)) %>% 
   ungroup() %>% 
-  mutate(area_total = sum(area)) %>% 
-  group_by(ECOREGION) %>% 
-  mutate(area_rel = (area*100)/area_total) %>% 
+  group_by(ECOREGION, var_names) %>% 
+  mutate(rel = (abs/total)*100) %>% 
   ungroup() %>% 
-  select(-area_total)
-
-# 9. Add human population density and GDP ----
-
-load("./../data/04_meow-with-coral-reefs-gdp.RData")
-
-load("./../data/04_meow-population.RData")
-
-data_descriptors <- left_join(data_meowpop, data_descriptors) %>% 
-  left_join(., data_meowgdp) %>% 
-  mutate_at(5:13, ~replace_na(., 0))
-
-# 10. Remove useless objects ----
-
-rm(data_meowgdp, data_meowpop, data_surface)
+  select(-total) %>% 
+  pivot_wider(names_from = "var_names", values_from = c("abs", "rel"), names_glue = "{var_names}_{.value}")
 
 ```
 
@@ -938,31 +934,21 @@ pixel_monitoring <- data_gcrmn_sites %>%
 data_descriptors <- left_join(pixel_total, pixel_monitoring) %>% 
   mutate(n_monitoring = replace_na(n_monitoring, replace = 0),
          n_percent = (n_monitoring/n_total)*100) %>% 
-  left_join(data_descriptors, .) %>% 
-  left_join(as.tibble(data_meowreefs), .) %>% 
-  st_as_sf()
+  left_join(data_descriptors, .)
 
-# 7. Remove useless objects ----
+# 7. Transform as an sf object ----
 
-rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring)
+data_descriptors <- left_join(as_tibble(data_meowreefs), data_descriptors) %>% 
+  st_as_sf() %>% 
+  select(-"FID":-"SHAPE_Area", -"area")
 
-```
+# 8. Remove useless objects ----
 
-## 6.2 Pairs
-
-```{r}
-
-# 1. Make the plot ----
-
-ggpairs(data_descriptors[,15:30])
-
-# 2. Save the plot ----
-
-ggsave("./../figs/08_pairs-of-data-descriptors.png", height = 20, width = 20)
+rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring, data_meow)
 
 ```
 
-## 6.3 Lollipop
+## 6.2 Lollipop
 
 ```{r fig.height=15, fig.width=10}
 
@@ -985,9 +971,9 @@ plot_area <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel)
 
 # 2.2 Number of surveys by ecoregion --
 
-plot_surveys <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_surveys)) +
+plot_surveys <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_surveys_rel)) +
   geom_point() +
-  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_surveys)) +
+  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_surveys_rel)) +
   coord_flip() +
   theme(axis.text.y = element_markdown()) +
   labs(x = NULL, y = "Number of surveys") +
@@ -997,9 +983,9 @@ plot_surveys <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_r
 
 # 2.3 Number of years with data by ecoregion --
 
-plot_years <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_years)) +
+plot_years <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel), y = n_years_abs)) +
   geom_point() +
-  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_years)) +
+  geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_years_abs)) +
   coord_flip() +
   theme(axis.text.y = element_markdown()) +
   labs(x = NULL) +
@@ -1033,39 +1019,121 @@ rm(plot_area, plot_surveys, plot_years, plot_pixel)
 
 ```
 
-## 6.4 Effort vs surface
-
-### 6.4.1 Surveys
+## 6.3 Multivariate approach
 
 ```{r}
 
-data_descriptors2 <- data_descriptors %>% 
-  mutate(total_surveys = sum(n_surveys)) %>% 
-  group_by(ECOREGION) %>% 
-  mutate(surveys_rel = (n_surveys*100)/total_surveys) %>% 
-  ungroup() %>% 
-  select(-total_surveys) %>% 
-  mutate(survey_deviation = surveys_rel - area_rel) %>% 
+# 1. PCA ----
+
+# 1.1 Make the PCA --
+
+data_descriptors_pca <- as_tibble(data_descriptors) %>% 
+  select(ECOREGION, area_rel, n_sites_abs, n_surveys_abs, first_year, n_15_abs, n_years_abs, n_percent)
+
+res_pca <- PCA(data_descriptors_pca[,-1])
+
+# 1.2 Assemble plots --
+
+plot_grid(plot.PCA(res_pca, choix = "ind"), 
+          plot.PCA(res_pca, choix = "var"))
+
+# 1.3 Save the plot --
+
+ggsave(filename = "./../figs/10_multivariate-approach-pca.png")
+
+# 2. HCPC ----
+
+# 2.1 Make the HCPC --
+
+res_hcpc <- HCPC(res_pca, nb.clust=3) # Arbitrary selection of the number of cluster 
+# (remove nb.clust argument to define the cutting by a click)
+
+# 2.2 Save the plots --
+
+png("./../figs/10_multivariate-approach-hcpc1.png", width = 1600, height = 1600, res = 300)
+plot.HCPC(res_hcpc, choice = "tree")
+dev.off()
+
+png("./../figs/10_multivariate-approach-hcpc2.png", width = 1600, height = 1600, res = 300)
+plot.HCPC(res_hcpc, choice = "map")
+dev.off()
+
+# 2.3 Join with MEOW --
+
+data_descriptors_hcpc <- left_join(data_descriptors, res_hcpc$data.clust) %>% 
+  # Add a new cluster for cluster with NA (cluster with no data)
+  mutate(clust = as.numeric(as.character(clust)),
+         clust = replace(clust, is.na(clust), max(clust, na.rm = TRUE) + 1),
+         clust = as.factor(clust)) %>% 
   st_as_sf()
 
-# 1. Make the plot ----
+# 3.1 Make the map --
 
-ggplot(data = data_descriptors2, aes(x = area_rel, y = surveys_rel, label = ECOREGION)) +
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_hcpc, aes(fill = clust)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
+  scale_fill_manual(values = c("red", "blue", "green", "orange"), 
+                     labels = c("High reef area, high monitoring", 
+                                "Medium reef area, good monitoring", 
+                                "Low reef area, low monitoring", 
+                                "No data")) +
+  theme_map() +
+  theme(legend.position = "bottom", 
+        legend.direction = "vertical")
+
+# 3.2 Save the map --
+
+ggsave(filename = "./../figs/10_multivariate-approach-map.png", height = 6, width = 10)
+
+```
+
+## 6.4 Surveys effort vs reef area
+
+```{r}
+
+# 1. Survey effort vs reef area ----
+
+# 1.1 Make the plot --
+
+ggplot(data = data_descriptors, aes(x = area_rel, y = n_surveys_rel, label = ECOREGION)) +
   geom_point() +
   geom_label() +
   geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
+  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
 
-# 1. Make the plot ----
+# 1.2 Save the plot --
 
-ggplot(data = data_descriptors2, aes(x = area_rel, y = survey_deviation, label = ECOREGION)) +
+ggsave(filename = "./../figs/11_survey-effort-vs-reef-area_raw.png", height = 8, width = 8)
+
+# 2. Deviation of survey effort vs reef area ----
+
+# 2.1 Calculate the deviation from expected for surveys --
+
+data_descriptors_effort <- data_descriptors %>% 
+  mutate(survey_deviation = n_surveys_rel - area_rel) %>% 
+  st_as_sf()
+
+# 2.2 Make the plot --
+
+ggplot(data = data_descriptors_effort, aes(x = area_rel, y = survey_deviation, label = ECOREGION)) +
   geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation)) +
   geom_point(shape = 21, col = "white", fill = "black", size = 3) +
   geom_hline(yintercept = 0) +
   labs(x = "Relative reef surface (%)", y = "Deviation from expected") +
   lims(y = c(-6, 6))
 
-# 1. Make the plot ----
+# 2.3 Save the plot --
+
+ggsave(filename = "./../figs/11_survey-effort-vs-reef-area_graph-deviation.png", height = 4, width = 6)
+
+# 3. Map of deviation ----
+
+# 3.1 Make the plot --
 
 palette_fill <- c("#2c82c9", "white", "#cf000f")
 
@@ -1073,7 +1141,7 @@ ggplot() +
   # Background map border
   geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
   # MEOW
-  geom_sf(data = data_descriptors2, aes(fill = survey_deviation)) +
+  geom_sf(data = data_descriptors_effort, aes(fill = survey_deviation)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   # Set guide colours
@@ -1089,7 +1157,74 @@ ggplot() +
                                 ticks.colour = "black")) +  
   theme_map()
 
+# 3.2 Save the map --
+
+ggsave("../figs/11_survey-effort-vs-reef-area_map-deviation.png", height = 6, width = 10)
+
 ```
+
+## 6.5 Maps of descriptors
+
+### 6.5.1
+
+```{r}
+
+
+
+```
+
+### 6.5.2
+
+```{r}
+
+
+
+```
+
+## 6.6 Supplementary table
+
+```{r}
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### 6.4.2 Pixel
 
@@ -1216,65 +1351,9 @@ ggsave("../figs/01_global-map-relative-pixel-with-data.png", height = 6, width =
 
 ```
 
-## 6.6 PCA
-
-```{r}
-
-# 1. Make the PCA ----
-
-test <- as.tibble(data_descriptors)
-
-res_pca <- PCA(test[,c(15, 16, 23, 26, 27)])
-
-# 2. Assemble plots ----
-
-plot_grid(plot.PCA(res_pca, choix = "ind"), 
-          plot.PCA(res_pca, choix = "var"))
-
-# 3. Save the plot ----
-
-ggsave(filename = "./../figs/10_pca-data-descriptors.png")
-
-```
-
-```{r}
-
-AA <- HCPC(res_pca, nb.clust=4, iter.max = 100)
-
-BB <- left_join(data_descriptors, AA$data.clust) %>% 
-  select(-color, -name) %>% 
-  left_join(as.tibble(data_meowreefs), .) %>% 
-  st_as_sf()
-
-# 1. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = BB, aes(fill = clust)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
-  scale_color_manual(values = palette_duration) +
-  theme_map() +
-  labs(col = "Monitoring duration (years)")
-
-```
 
 
 
-
-
-## 6.7 Table
-
-```{r}
-
-
-
-
-
-```
 
 # Reproducibility
 
