@@ -39,6 +39,7 @@ library(FactoMineR) # For PCA
 
 source("functions/graphical_par.R")
 source("functions/theme_map.R")
+source("functions/theme_map2.R")
 source("functions/theme_graph.R")
 theme_set(theme_graph())
 
@@ -942,11 +943,37 @@ data_descriptors <- left_join(as_tibble(data_meowreefs), data_descriptors) %>%
   st_as_sf() %>% 
   select(-"FID":-"SHAPE_Area", -"area")
 
-# 8. Remove useless objects ----
+# 8. Map of grid reefs to visualize size of pixel ----
+
+# 8.1 Make the map --
+
+ggplot() +
+  geom_sf(data = grid_reefs, aes(fill = ECOREGION), show.legend = FALSE) +
+  geom_sf(data = data_map) +
+  coord_sf(x = c(30, 60), y = c(-30, -5))
+
+# 8.2 Save the map --
+
+ggsave(filename = "../figs/09_dataviz-size-pixel.png", height = 6, width = 8)
+
+# 9. Remove useless objects ----
 
 rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring, data_meow)
 
 ```
+
+```{r}
+
+hist(data_descriptors$n_percent)
+hist(data_descriptors$area_rel)
+hist(data_descriptors$first_year)
+hist(data_descriptors$n_surveys_rel)
+
+
+cut(data_descriptors$n_surveys_rel, breaks = 4)
+
+```
+
 
 ## 6.2 Lollipop
 
@@ -967,7 +994,7 @@ plot_area <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel)
   geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = area_rel)) +
   coord_flip() +
   theme(axis.text.y = element_markdown()) +
-  labs(x = NULL, y ="Surface (%)")
+  labs(x = NULL, y ="Area (%)")
 
 # 2.2 Number of surveys by ecoregion --
 
@@ -976,7 +1003,7 @@ plot_surveys <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_r
   geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_surveys_rel)) +
   coord_flip() +
   theme(axis.text.y = element_markdown()) +
-  labs(x = NULL, y = "Number of surveys") +
+  labs(x = NULL, y = "Surveys (%)") +
   theme(axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -988,7 +1015,7 @@ plot_years <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel
   geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_years_abs)) +
   coord_flip() +
   theme(axis.text.y = element_markdown()) +
-  labs(x = NULL) +
+  labs(x = NULL, y = "Years (n)") +
   theme(axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -1000,7 +1027,7 @@ plot_pixel <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel
   geom_segment(aes(xend = fct_reorder(name, area_rel), y = 0, yend = n_percent)) +
   coord_flip() +
   theme(axis.text.y = element_markdown()) +
-  labs(x = NULL) +
+  labs(x = NULL, y = "Pixel (%)") +
   theme(axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -1028,7 +1055,7 @@ rm(plot_area, plot_surveys, plot_years, plot_pixel)
 # 1.1 Make the PCA --
 
 data_descriptors_pca <- as_tibble(data_descriptors) %>% 
-  select(ECOREGION, area_rel, n_sites_abs, n_surveys_abs, first_year, n_15_abs, n_years_abs, n_percent)
+  select(ECOREGION, n_sites_abs, n_surveys_abs, first_year, n_15_abs, n_years_abs, n_percent)
 
 res_pca <- PCA(data_descriptors_pca[,-1])
 
@@ -1045,7 +1072,7 @@ ggsave(filename = "./../figs/10_multivariate-approach-pca.png")
 
 # 2.1 Make the HCPC --
 
-res_hcpc <- HCPC(res_pca, nb.clust=3) # Arbitrary selection of the number of cluster 
+res_hcpc <- HCPC(res_pca, nb.clust=4) # Arbitrary selection of the number of cluster 
 # (remove nb.clust argument to define the cutting by a click)
 
 # 2.2 Save the plots --
@@ -1077,10 +1104,10 @@ ggplot() +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
-  scale_fill_manual(values = c("red", "blue", "green", "orange"), 
+  scale_fill_manual(values = c("red", "blue", "green", "orange", "purple", "grey"), 
                      labels = c("High reef area, high monitoring", 
                                 "Medium reef area, good monitoring", 
-                                "Low reef area, low monitoring", 
+                                "Low reef area, low monitoring", "bla", "bla",
                                 "No data")) +
   theme_map() +
   theme(legend.position = "bottom", 
@@ -1091,6 +1118,71 @@ ggplot() +
 ggsave(filename = "./../figs/10_multivariate-approach-map.png", height = 6, width = 10)
 
 ```
+
+```{r}
+
+library(RColorBrewer)
+
+A <- as_tibble(res_pca$var$coord) %>% 
+  bind_cols(var = rownames(res_pca$var$coord), .) %>% 
+  select(var, Dim.1, Dim.2)
+
+library(ggforce)
+
+plot_var <- ggplot(data = A) +
+  geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var)) +
+  geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
+                  arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  lims(x = c(-1, 1), y = c(-1, 1)) +
+  geom_circle(data = data.frame(x0 = 0, y0 = 0, r = 1), # From ggforce package
+              aes(x0 = x0, y0 = y0, r = r)) +
+  coord_fixed() +
+  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
+
+A <- res_hcpc$call$X %>% 
+  mutate(ind = rownames(.)) %>% 
+  as_tibble() %>% 
+  select(ind, Dim.1, Dim.2, clust)
+
+plot_ind <- ggplot(data = A, aes(x = Dim.1, y = Dim.2, col = clust)) +
+  geom_point(show.legend = FALSE, size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
+  scale_color_brewer(palette = "Set2")
+
+
+plot_grid(plot_var, plot_ind)
+
+data_descriptors_hcpc <- left_join(data_descriptors, res_hcpc$data.clust) %>% 
+  # Add a new cluster for cluster with NA (cluster with no data)
+  mutate(clust = as.numeric(as.character(clust)),
+         clust = replace(clust, is.na(clust), max(clust, na.rm = TRUE) + 1),
+         clust = as.factor(clust)) %>% 
+  st_as_sf()
+
+# 3.1 Make the map --
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_hcpc, aes(fill = clust)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
+  theme_map() +
+  theme(legend.position = "bottom", 
+        legend.direction = "vertical") +
+  scale_fill_brewer(palette = "Set2")
+
+```
+
+
 
 ## 6.4 Surveys effort vs reef area
 
@@ -1145,7 +1237,7 @@ ggplot() +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   # Set guide colours
-  scale_fill_gradientn(colours = palette_fill, limits = c(-6, 6), breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
+  scale_fill_gradientn(colours = palette_fill, limits = c(-6, 10), breaks = c(-6, 0, 5, 10)) +
   guides(fill = guide_colourbar(title = "Deviation from expected",
                                 title.position = "top",
                                 barwidth = 18,
@@ -1165,19 +1257,195 @@ ggsave("../figs/11_survey-effort-vs-reef-area_map-deviation.png", height = 6, wi
 
 ## 6.5 Maps of descriptors
 
-### 6.5.1
+### 6.5.1 Reef area
 
 ```{r}
 
+# 1. Create bins ----
 
+hist(data_descriptors$area_rel)
+
+data_descriptors_maps <- data_descriptors %>% 
+  mutate(area_rel_cut = cut(area_rel, breaks = c(0, 0.25, 2, 4, 8), include.lowest = TRUE))
+
+# 2. Make the map ----
+
+map_area <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = area_rel_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_manual(values = palette_fill_2) +
+  guides(fill = guide_legend(title.position = "top",
+                      title.hjust = 0.5,
+                      title = "Relative coral reef area (%)")) +
+  labs(title = "AREA") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_area, file = "../figs/10_global-map_reef-area.png", height = 6, width = 10)
 
 ```
 
-### 6.5.2
+### 6.5.2 Pixel with data
 
 ```{r}
 
+# 1. Create bins ----
 
+hist(data_descriptors$area_rel)
+
+data_descriptors_maps <- data_descriptors %>% 
+  mutate(percent_n_cut = cut(n_percent, breaks = c(0, 25, 50, 75, 100), include.lowest = TRUE))
+
+# 2. Make the map ----
+
+map_pixel <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = percent_n_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_manual(values = palette_fill_2) +
+  guides(fill = guide_legend(title.position = "top",
+                      title.hjust = 0.5,
+                      title = "Percentage of pixel with data")) +
+  labs(title = "SPATIAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_pixel, file = "../figs/10_global-map_pixel-with-data.png", height = 6, width = 10)
+
+```
+
+### 6.5.3 First year
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$first_year)
+
+data_descriptors_maps <- data_descriptors %>% 
+  mutate(first_year_cut = case_when(is.na(first_year) ~ "No data",
+                                    first_year >= 1980 & first_year < 2000 ~ "1980 - 1999",
+                                    first_year >= 2000 & first_year < 2010 ~ "2000 - 2009",
+                                    first_year >= 2010 ~ "> 2010"),
+                    first_year_cut = factor(first_year_cut, 
+                                            levels = c("1980 - 1999", "2000 - 2009", "> 2010", "No data")))
+
+# 2. Make the map ----
+
+map_first <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = first_year_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_manual(values = rev(palette_fill_2)) +
+  guides(fill = guide_legend(title.position = "top",
+                      title.hjust = 0.5,
+                      title = "Year with first monitoring")) +
+  labs(title = "TEMPORAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_first, file = "../figs/10_global-map_first-year.png", height = 6, width = 10)
+
+```
+
+### 6.5.4 Years with data
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$n_years_abs)
+
+data_descriptors_maps <- data_descriptors %>% 
+    mutate(n_years_abs_cut = case_when(n_years_abs == 0 ~ "No data",
+                                       n_years_abs > 0 & n_years_abs <= 10 ~ "1 - 10",
+                                       n_years_abs > 10 & n_years_abs <= 20 ~ "11 - 20",
+                                       n_years_abs > 20 ~ "> 21"),
+           n_years_abs_cut = factor(n_years_abs_cut, levels = c("No data", "1 - 10", "11 - 20", "> 21")))
+
+# 2. Make the map ----
+
+map_years <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = n_years_abs_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_manual(values = palette_fill_2) +
+  guides(fill = guide_legend(title.position = "top",
+                      title.hjust = 0.5,
+                      title = "Number of years with data over 1980 - 2020")) +
+  labs(title = "TEMPORAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_years, file = "../figs/10_global-map_years-with-data.png", height = 6, width = 10)
+
+```
+
+### 6.5.5 Surveys
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$n_surveys_rel)
+
+data_descriptors_maps <- data_descriptors %>% 
+    mutate(n_surveys_rel_cut = case_when(n_surveys_rel == 0 ~ "No data",
+                                         n_surveys_rel > 0 & n_surveys_rel <= 0.5 ~ "(0,0.5]",
+                                         n_surveys_rel > 0.5 & n_surveys_rel <= 1 ~ "(0.5,1]",
+                                         n_surveys_rel > 1 ~ "> 1"),
+           n_surveys_rel_cut = factor(n_surveys_rel_cut, levels = c("No data", "(0,0.5]", "(0.5,1]", "> 1")))
+
+# 2. Make the map ----
+
+map_surveys <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = n_surveys_rel_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_manual(values = palette_fill_2) +
+  guides(fill = guide_legend(title.position = "top",
+                      title.hjust = 0.5,
+                      title = "Relative number of surveys (%)")) +
+  labs(title = "SPATIAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_surveys, file = "../figs/10_global-map_relative-surveys.png", height = 6, width = 10)
+
+```
+
+### 6.2.6 Bind plots
+
+```{r fig.height=12, fig.width=10}
+
+# 1. Make the map ----
+
+plot_grid(map_area, NULL, map_pixel, map_surveys, map_first, map_years, nrow = 3, ncol = 2)
+
+# 2. Save the map ----
+
+ggsave(file = "../figs/10_global-map_combined-maps.png", height = 12, width = 10)
 
 ```
 
@@ -1188,172 +1456,6 @@ ggsave("../figs/11_survey-effort-vs-reef-area_map-deviation.png", height = 6, wi
 
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 6.4.2 Pixel
-
-```{r}
-
-data_descriptors2 <- data_descriptors %>% 
-  mutate(total_surveys = sum(n_surveys)) %>% 
-  group_by(ECOREGION) %>% 
-  mutate(surveys_rel = (n_surveys*100)/total_surveys) %>% 
-  ungroup() %>% 
-  select(-total_surveys) %>% 
-  mutate(survey_deviation = surveys_rel - area_rel) %>% 
-  st_as_sf()
-
-quantile(data_descriptors2$n_percent)
-
-# 1. Make the plot ----
-
-ggplot(data = data_descriptors2, aes(x = area_rel, y = n_percent, label = ECOREGION)) +
-  geom_point() +
-  geom_label() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative sites number (%)")
-
-# 1. Make the plot ----
-
-ggplot(data = data_descriptors2, aes(x = area_rel, y = survey_deviation, label = ECOREGION)) +
-  geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation)) +
-  geom_point(shape = 21, col = "white", fill = "black", size = 3) +
-  geom_hline(yintercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Deviation from expected") +
-  lims(y = c(-6, 6))
-
-# 1. Make the plot ----
-
-palette_fill <- c("#2c82c9", "white", "#cf000f")
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors2, aes(fill = n_percent)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  # Set guide colours
-  scale_fill_gradientn(colours = palette_fill, limits = c(0, 100), breaks = c(0, 25, 50, 75, 100)) +
-  guides(fill = guide_colourbar(title = "Deviation from expected",
-                                title.position = "top",
-                                barwidth = 18,
-                                barheight = 1,
-                                frame.colour = "black",
-                                frame.linewidth = 1,
-                                label.theme = element_text(family = font_choose_map,
-                                                           size = 10),
-                                ticks.colour = "black")) +  
-  theme_map()
-
-
-```
-
-## 6.5 Maps of descriptors
-
-### 6.5.1 Relative coral reef area
-
-```{r}
-
-# 1. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors, aes(fill = area_rel)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  # Set guide colours
-  scale_fill_gradientn(colours = palette_fill, limits = c(0, 7.002), breaks = c(0, 1, 2, 3, 4, 5, 6, 7)) +
-  guides(fill = guide_colourbar(title = "Relative coral reef area (%)",
-                                title.position = "top",
-                                barwidth = 18,
-                                barheight = 1,
-                                frame.colour = "black",
-                                frame.linewidth = 1,
-                                label.theme = element_text(family = font_choose_map,
-                                                           size = 10),
-                                ticks.colour = "black")) +  
-  theme_map()
-
-# 2. Save the map ----
-
-ggsave("../figs/01_global-map-relative-reef-area.png", height = 6, width = 10)
-
-```
-
-### 6.5.2 Pixel with data
-
-```{r}
-
-# 1. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors, aes(fill = n_percent)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  # Set guide colours
-  scale_fill_gradientn(colours = palette_fill, limits = c(0, 100), breaks = c(0, 25, 50, 75, 100)) +
-  guides(fill = guide_colourbar(title = "Percentage of pixel with data",
-                                title.position = "top",
-                                barwidth = 18,
-                                barheight = 1,
-                                frame.colour = "black",
-                                frame.linewidth = 1,
-                                label.theme = element_text(family = font_choose_map,
-                                                           size = 10),
-                                ticks.colour = "black")) +  
-  theme_map()
-
-# 2. Save the map ----
-
-ggsave("../figs/01_global-map-relative-pixel-with-data.png", height = 6, width = 10)
-
-```
-
-
-
-
 
 # Reproducibility
 
