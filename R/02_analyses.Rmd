@@ -51,7 +51,9 @@ load(file = "../data/04_meow-with-coral-reefs.RData")
 
 data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>% 
   filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5"))) %>% 
-  drop_na(Latitude, Longitude)
+  drop_na(Latitude, Longitude) %>% 
+  # Add data sources
+  left_join(., read.csv2("../data/05_data-sources.csv", na.strings = c("", "NA")))
 
 # 5. Remove sites falling outside MEOW containing coral reefs ----
 
@@ -962,19 +964,6 @@ rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring, data_meow)
 
 ```
 
-```{r}
-
-hist(data_descriptors$n_percent)
-hist(data_descriptors$area_rel)
-hist(data_descriptors$first_year)
-hist(data_descriptors$n_surveys_rel)
-
-
-cut(data_descriptors$n_surveys_rel, breaks = 4)
-
-```
-
-
 ## 6.2 Lollipop
 
 ```{r fig.height=15, fig.width=10}
@@ -1453,7 +1442,55 @@ ggsave(file = "../figs/10_global-map_combined-maps.png", height = 12, width = 10
 
 ```{r}
 
+data_descriptors %>% 
+  select(ECO_CODE_X, ECOREGION, area_abs, area_rel, n_1_abs, n_2_5_abs, n_6_10_abs, 
+         n_11_15_abs, n_15_abs, n_surveys_abs, n_years_abs, first_year, n_percent) %>%
+  rename(Code = ECO_CODE_X, Name = ECOREGION, Surveys = n_surveys_abs) %>% 
+  st_drop_geometry() %>% 
+  mutate(area_abs = round(area_abs*1e-6, 1),
+         area_rel = round(area_rel, 3),
+         n_percent = round(n_percent, 1)) %>%
+  write.csv2(., file = "../figs/xx_supplementary-table.csv", row.names = FALSE)
 
+```
+
+# 7. Data sources
+
+```{r}
+
+# 1. Filter and transform the data ----
+
+data_source <- data_gcrmn %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Latitude, Longitude, Year, Source) %>% 
+  distinct(.) %>%
+  group_by(Source, Year) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  complete(Source, fill = list(Abs = 0)) %>% 
+  group_by(Year) %>% 
+  mutate(Rel = (Abs/sum(Abs))*100)
+
+# 2. Define label positions ----
+
+#data_source_label <- tibble(Source = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
+#                            x = c(1995, 2012, 2003, 1989, 2001, 1990),
+#                            y = c(0.94, 0.75, 0.5, 0.65, 0.22, 0.22))
+
+# 3. Make the plot ----
+
+ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)) +
+  geom_stream(type = "proportional", show.legend = TRUE, alpha = 0.8) +
+  #geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
+  # Alternative using geom_stream_label but less precise
+  #geom_stream_label(type = "proportional", family = font_choose_graph) +
+  #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  lims(x = c(1980, 2020)) +
+  labs(y = "Percentage of surveys", x = "Year")
+
+# 4. Save the plot ----
+
+ggsave(filename = "../figs/02_evolution-data-sources_streamplot.png", height = 4, width = 8)
 
 ```
 
