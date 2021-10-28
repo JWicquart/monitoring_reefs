@@ -32,8 +32,9 @@ library(ggsflabel)
 library(ggtext)
 library(glue)
 library(ggrepel)
-library(GGally) # For ggpairs
 library(FactoMineR) # For PCA
+library(RColorBrewer)
+library(ggforce)# For geom_circle
 
 # 2. Source functions ----
 
@@ -645,11 +646,12 @@ data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT",
 # 3. Make the plot ----
 
 ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)) +
-  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.8) +
+  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.9) +
   geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
   # Alternative using geom_stream_label but less precise
   #geom_stream_label(type = "proportional", family = font_choose_graph) +
-  scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
   labs(y = "Percentage of surveys", x = "Year")
 
@@ -689,11 +691,12 @@ data_source <- data_gcrmn %>%
 # 3. Make the plot ----
 
 ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)) +
-  geom_stream(type = "proportional", show.legend = TRUE, alpha = 0.8) +
+  geom_stream(type = "proportional", show.legend = TRUE, alpha = 0.9) +
   #geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
   # Alternative using geom_stream_label but less precise
   #geom_stream_label(type = "proportional", family = font_choose_graph) +
   #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
+  scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
   labs(y = "Percentage of surveys", x = "Year")
 
@@ -1075,6 +1078,8 @@ rm(plot_area, plot_surveys, plot_years, plot_pixel)
 
 ## 7.3 Multivariate approach
 
+### 7.3.1 Analyses
+
 ```{r}
 
 # 1. PCA ----
@@ -1099,7 +1104,7 @@ ggsave(filename = "./../figs/10_multivariate-approach-pca.png")
 
 # 2.1 Make the HCPC --
 
-res_hcpc <- HCPC(res_pca, nb.clust=4) # Arbitrary selection of the number of cluster 
+res_hcpc <- HCPC(res_pca, nb.clust=5) # Arbitrary selection of the number of cluster 
 # (remove nb.clust argument to define the cutting by a click)
 
 # 2.2 Save the plots --
@@ -1112,51 +1117,23 @@ png("./../figs/10_multivariate-approach-hcpc2.png", width = 1600, height = 1600,
 plot.HCPC(res_hcpc, choice = "map")
 dev.off()
 
-# 2.3 Join with MEOW --
-
-data_descriptors_hcpc <- left_join(data_descriptors, res_hcpc$data.clust) %>% 
-  # Add a new cluster for cluster with NA (cluster with no data)
-  mutate(clust = as.numeric(as.character(clust)),
-         clust = replace(clust, is.na(clust), max(clust, na.rm = TRUE) + 1),
-         clust = as.factor(clust)) %>% 
-  st_as_sf()
-
-# 3.1 Make the map --
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_hcpc, aes(fill = clust)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
-  scale_fill_manual(values = c("red", "blue", "green", "orange", "purple", "grey"), 
-                     labels = c("High reef area, high monitoring", 
-                                "Medium reef area, good monitoring", 
-                                "Low reef area, low monitoring", "bla", "bla",
-                                "No data")) +
-  theme_map() +
-  theme(legend.position = "bottom", 
-        legend.direction = "vertical")
-
-# 3.2 Save the map --
-
-ggsave(filename = "./../figs/10_multivariate-approach-map.png", height = 6, width = 10)
-
 ```
+
+### 7.3.2 Figures
 
 ```{r}
 
-library(RColorBrewer)
+# 1. Graph of variables ----
 
-A <- as_tibble(res_pca$var$coord) %>% 
+# 1.1 Extract and transform the data --
+
+data_var <- as_tibble(res_pca$var$coord) %>% 
   bind_cols(var = rownames(res_pca$var$coord), .) %>% 
   select(var, Dim.1, Dim.2)
 
-library(ggforce)
+# 1.2 Make the graph --
 
-plot_var <- ggplot(data = A) +
+ggplot(data = data_var) +
   geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var)) +
   geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
                   arrow = arrow(length = unit(0.25, "cm"))) +
@@ -1169,47 +1146,123 @@ plot_var <- ggplot(data = A) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
 
-A <- res_hcpc$call$X %>% 
-  mutate(ind = rownames(.)) %>% 
-  as_tibble() %>% 
-  select(ind, Dim.1, Dim.2, clust)
+# 2. Graph of individuals ----
 
-plot_ind <- ggplot(data = A, aes(x = Dim.1, y = Dim.2, col = clust)) +
+# 2.1 Extract and transform the data --
+
+data_hcpc_descriptors <- res_hcpc$data.clust %>% 
+  mutate(ind = rownames(.))
+
+data_hcpc_cluster <- res_hcpc$call$X %>% 
+  mutate(ind = rownames(.))
+
+data_ind <- left_join(data_hcpc_cluster, data_hcpc_descriptors) %>% 
+  left_join(data_descriptors, .) %>% 
+  st_as_sf() %>% 
+  select(ECOREGION, ECO_CODE_X, Dim.1, Dim.2, clust) %>% 
+  # Change numbering of clusters to match with logical order for interpretation
+  mutate(clust = as.character(clust),
+         clust = replace_na(clust, "6"),
+         clust = case_when(clust == "1" ~ "5",
+                           clust == "2" ~ "4",
+                           clust == "4" ~ "2",
+                           clust == "5" ~ "1",
+                           TRUE ~ clust))
+
+# Palette of colors for each cluster
+palette_cluster <- c("1" = "#03a678",
+                     "2" = "#68c3a3",
+                     "3" = "#19b5fe",
+                     "4" = "#eb9532",
+                     "5" = "#d64541",
+                     "6" = "#6c7a89")
+
+# Legend labels for each cluster
+legend_cluster <- c("1" = glue("<b>1.</b> Very hight spatio-temporal coverage"),
+                    "2" = glue("<b>2.</b> High spatio-temporal coverage"),
+                    "3" = glue("<b>3.</b> Medium spatial, medium temporal coverage"),
+                    "4" = glue("<b>4.</b> Medium spatial, low temporal coverage"),
+                    "5" = glue("<b>5.</b> Low spatial, low temporal coverage"),
+                    "6" = glue("<b>6.</b> No data"))
+
+# 2.2 Make the graph without clusters colors --
+
+ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
+  geom_point(size = 2) +
+  geom_text(show.legend = FALSE, size = 3, nudge_x = 0.25) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
+
+# 2.3 With clusters colors --
+
+ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, col = clust)) +
   geom_point(show.legend = FALSE, size = 2) +
+  geom_text(show.legend = FALSE, size = 3, nudge_x = 0.25) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
-  scale_color_brewer(palette = "Set2")
+  scale_color_manual(values = palette_cluster)
 
-
-plot_grid(plot_var, plot_ind)
-
-data_descriptors_hcpc <- left_join(data_descriptors, res_hcpc$data.clust) %>% 
-  # Add a new cluster for cluster with NA (cluster with no data)
-  mutate(clust = as.numeric(as.character(clust)),
-         clust = replace(clust, is.na(clust), max(clust, na.rm = TRUE) + 1),
-         clust = as.factor(clust)) %>% 
-  st_as_sf()
+# 3. Map with all clusters ----
 
 # 3.1 Make the map --
 
 ggplot() +
   # Background map border
   geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_hcpc, aes(fill = clust)) +
+  # Clusters
+  geom_sf(data = data_ind, aes(fill = clust)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
   theme_map() +
-  theme(legend.position = "bottom", 
-        legend.direction = "vertical") +
-  scale_fill_brewer(palette = "Set2")
+  theme(legend.position = "right", 
+        legend.direction = "vertical",
+        legend.title = element_text(face = "bold"),
+        legend.text = element_markdown()) +
+  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
+
+# 3.2 Save the map --
+
+ggsave(filename = "./../figs/10_multivariate-approach-map.png", height = 5, width = 12)
+
+# 4. Map by cluster ----
+
+for(i in 1:6){
+  
+  # 4.1 Make the map --
+
+  ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_meowreefs, fill = "#ecf0f1") +
+  # Clusters
+  geom_sf(data = data_ind %>% filter(clust == as.character(i)), aes(fill = clust)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
+  theme_map() +
+  theme(legend.position = "right", 
+        legend.direction = "vertical",
+        legend.title = element_text(face = "bold"),
+        legend.text = element_markdown()) +
+  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
+
+  # 4.2 Save the map --
+
+  ggsave(filename = paste0("./../figs/10_multivariate-approach-map_cluster-", i,".png"), height = 5, width = 12)
+
+}
+
+# 5. Remove useless objects ----
+
+rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i)
 
 ```
-
-
 
 ## 7.4 Surveys effort vs reef area
 
