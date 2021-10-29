@@ -1146,6 +1146,8 @@ ggplot(data = data_var) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
 
+ggsave(filename = "./../figs/10_multi-approach_graph-var.png", height = 6, width = 6)
+
 # 2. Graph of individuals ----
 
 # 2.1 Extract and transform the data --
@@ -1177,13 +1179,19 @@ palette_cluster <- c("1" = "#03a678",
                      "5" = "#d64541",
                      "6" = "#6c7a89")
 
+# Get the numbers of ecoregions for each cluster
+legend_cluster <- data_ind %>%
+  st_drop_geometry() %>% 
+  group_by(clust) %>% 
+  count()
+
 # Legend labels for each cluster
-legend_cluster <- c("1" = glue("<b>1.</b> Very hight spatio-temporal coverage"),
-                    "2" = glue("<b>2.</b> High spatio-temporal coverage"),
-                    "3" = glue("<b>3.</b> Medium spatial, medium temporal coverage"),
-                    "4" = glue("<b>4.</b> Medium spatial, low temporal coverage"),
-                    "5" = glue("<b>5.</b> Low spatial, low temporal coverage"),
-                    "6" = glue("<b>6.</b> No data"))
+legend_cluster <- c("1" = glue("<b>1.</b> Very high spatio-temporal coverage (<i>n</i> = 2)"),
+                    "2" = glue("<b>2.</b> High spatio-temporal coverage (<i>n</i> = 8)"),
+                    "3" = glue("<b>3.</b> Medium spatial, medium temporal coverage (<i>n</i> = 32)"),
+                    "4" = glue("<b>4.</b> Medium spatial, low temporal coverage (<i>n</i> = 23)"),
+                    "5" = glue("<b>5.</b> Low spatial, low temporal coverage (<i>n</i> = 29)"),
+                    "6" = glue("<b>6.</b> No data (<i>n</i> = 12)"))
 
 # 2.2 Make the graph without clusters colors --
 
@@ -1195,6 +1203,8 @@ ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
 
+ggsave(filename = "./../figs/10_multi-approach_graph-ind.png", height = 6, width = 6)
+
 # 2.3 With clusters colors --
 
 ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, col = clust)) +
@@ -1205,6 +1215,8 @@ ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, col = clus
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
   scale_color_manual(values = palette_cluster)
+
+ggsave(filename = "./../figs/10_multi-approach_graph-ind-clust.png", height = 6, width = 6)
 
 # 3. Map with all clusters ----
 
@@ -1227,7 +1239,7 @@ ggplot() +
 
 # 3.2 Save the map --
 
-ggsave(filename = "./../figs/10_multivariate-approach-map.png", height = 5, width = 12)
+ggsave(filename = "./../figs/10_multi-approach_map.png", height = 5, width = 12)
 
 # 4. Map by cluster ----
 
@@ -1254,13 +1266,13 @@ for(i in 1:6){
 
   # 4.2 Save the map --
 
-  ggsave(filename = paste0("./../figs/10_multivariate-approach-map_cluster-", i,".png"), height = 5, width = 12)
+  ggsave(filename = paste0("./../figs/10_multi-approach_map_cluster-", i,".png"), height = 5, width = 12)
 
 }
 
 # 5. Remove useless objects ----
 
-rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i)
+rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster)
 
 ```
 
@@ -1272,9 +1284,9 @@ rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i)
 
 # 1.1 Make the plot --
 
-ggplot(data = data_descriptors, aes(x = area_rel, y = n_surveys_rel, label = ECOREGION)) +
+ggplot(data = data_descriptors, aes(x = area_rel, y = n_surveys_rel, label = ECO_CODE_X)) +
   geom_point() +
-  geom_label() +
+  geom_text_repel() +
   geom_abline(intercept = 0) +
   labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
 
@@ -1292,12 +1304,16 @@ data_descriptors_effort <- data_descriptors %>%
 
 # 2.2 Make the plot --
 
-ggplot(data = data_descriptors_effort, aes(x = area_rel, y = survey_deviation, label = ECOREGION)) +
-  geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation)) +
-  geom_point(shape = 21, col = "white", fill = "black", size = 3) +
+palette_fill <- c("#d64541", "white", "#03a678")
+
+ggplot(data = data_descriptors_effort, aes(x = area_rel, y = survey_deviation, label = ECO_CODE_X, fill = survey_deviation)) +
+  geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation), col = "black") +
+  geom_point(size = 3, shape = 21, show.legend = FALSE) +
+  geom_text_repel(col = "black") +
   geom_hline(yintercept = 0) +
   labs(x = "Relative reef surface (%)", y = "Deviation from expected") +
-  lims(y = c(-6, 6))
+  lims(y = c(-10, 10)) +
+  scale_fill_gradientn(colours = palette_fill, limits = c(-10, 10), breaks = c(-10, -5, 0, 5, 10))
 
 # 2.3 Save the plot --
 
@@ -1307,8 +1323,6 @@ ggsave(filename = "./../figs/11_survey-effort-vs-reef-area_graph-deviation.png",
 
 # 3.1 Make the plot --
 
-palette_fill <- c("#2c82c9", "white", "#cf000f")
-
 ggplot() +
   # Background map border
   geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
@@ -1317,7 +1331,7 @@ ggplot() +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   # Set guide colours
-  scale_fill_gradientn(colours = palette_fill, limits = c(-6, 10), breaks = c(-6, 0, 5, 10)) +
+  scale_fill_gradientn(colours = palette_fill, limits = c(-10, 10), breaks = c(-10, -5, 0, 5, 10)) +
   guides(fill = guide_colourbar(title = "Deviation from expected",
                                 title.position = "top",
                                 barwidth = 18,
