@@ -653,7 +653,8 @@ ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)
   #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
   scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
-  labs(y = "Percentage of surveys", x = "Year")
+  labs(y = "Percentage of surveys", x = "Year") +
+  scale_y_continuous(labels = scales::percent)
 
 # 4. Save the plot ----
 
@@ -698,7 +699,8 @@ ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)
   #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
   scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
-  labs(y = "Percentage of surveys", x = "Year")
+  labs(y = "Percentage of surveys", x = "Year") +
+  scale_y_continuous(labels = scales::percent)
 
 # 4. Save the plot ----
 
