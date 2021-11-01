@@ -4,7 +4,7 @@ library(tidyverse)
 library(sf)
 sf_use_s2(FALSE) # Switch from S2 to GEOS
 
-# 2. Load and transform Reefs at Risk (RAR) data ----
+# 2. Load and transform UNEP-WCMC data ----
 
 data_reefs <- read_sf("data/01_reefs-distribution-unep-wcmc/01_Data/WCMC008_CoralReef2018_Py_v4_1.shp") %>% 
   st_transform(crs = 4326) %>% 

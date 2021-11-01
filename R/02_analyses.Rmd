@@ -1531,13 +1531,74 @@ ggsave(map_surveys, file = "../figs/10_global-map_relative-surveys.png", height 
 
 ```
 
-### 7.5.6 Bind plots
+### 7.5.6 Methods
+
+```{r}
+
+# 1. Create bins ----
+
+data_descriptors_maps <- data_gcrmn_meow %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Latitude, Longitude, Year, Method, ECOREGION) %>% 
+  distinct(.) %>% 
+  mutate(Method = str_split_fixed(Method, ",", 6)[,1],
+         Method = str_to_lower(Method),
+         Method = str_trim(Method, side = "both"),
+         Method = str_squish(Method),
+         Method = case_when(Method %in% c("line intercept transect", 
+                                          "line intersect transect",
+                                          "lit") ~ "LIT",
+                            Method %in% c("point intercept method",
+                                          "point intercept transect",
+                                          "point intersect transect",
+                                          "pit") ~ "PIT",
+                            Method %in% c("photo-quadrat",
+                                          "Photo-quadrat",
+                                          "underwater photo transect") ~ "Photo-quadrat",
+                            Method %in% c("visual census",
+                                          "visual quadrat estimation",
+                                          "vis est.") ~ "Visual census",
+                            Method == "video-transect" ~ "Video transect",
+                            TRUE ~ "Unknown")) %>% 
+  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
+  group_by(Method, ECOREGION) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  group_by(ECOREGION) %>% 
+  filter(Abs == max(Abs)) %>% 
+  select(-Abs) %>% 
+  left_join(data_meowreefs, .) %>% 
+  st_as_sf()
+
+# 2. Make the map ----
+
+map_methods <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = Method)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdBu") +
+  guides(fill = guide_legend(title.position = "top",
+                      title.hjust = 0.5,
+                      title = "Most used method")) +
+  labs(title = "METHOD") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_methods, file = "../figs/10_global-map_most-used-method.png", height = 6, width = 10)
+
+```
+
+### 7.5.7 Bind plots
 
 ```{r fig.height=12, fig.width=10}
 
 # 1. Make the map ----
 
-plot_grid(map_area, NULL, map_pixel, map_surveys, map_first, map_years, nrow = 3, ncol = 2)
+plot_grid(map_area, NULL, map_pixel, map_surveys, map_first, map_years, map_methods, nrow = 3, ncol = 2)
 
 # 2. Save the map ----
 
