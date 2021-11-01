@@ -14,16 +14,8 @@ col_color_graph <- "#446CB3"
 col_fill_map <- "#f2caae"
 col_color_map <- "#888888"
 col_background_map <- "#e4f1fe"
-
-palette_duration <- c("1" = "#2abb9b",
-                      "2-5" = "#3498db",
-                      "6-10" = "#be90d4",
-                      "11-15" = "#f4b350",
-                      ">15" = "#e74c3c")
-
-palette_fill <- c("#2c82c9", "#f5ab35", "#cf000f")
-
-palette_fill_2 <- c("#95a5a6", "#dadfe1", "#89c4f4", "#2abb9b")
+# Derived from RColorBrewer "RdYlBu" but with another yellow
+palette_5cols <- c("#2c7bb6", "#91bfdb", "#f7ca18", "#fc8d59", "#d73027")
 
 # 4. Define a common crs ----
 

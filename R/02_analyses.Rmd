@@ -16,13 +16,13 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# 1. Load packages and data
+# Load packages and data
 
 ```{r}
 
 # 1. Load packages ----
 
-library(magrittr) # To use special pipes
+library(magrittr)
 library(tidyverse) # Core tidyverse packages
 library(sf)
 sf_use_s2(FALSE) # Switch from S2 to GEOS
@@ -82,9 +82,9 @@ data_gcrmn_sites <- data_gcrmn %>%
 
 ```
 
-# 2. Maps
+# Figures
 
-## 2.1 Load data
+## Figure 1
 
 ```{r}
 
@@ -105,37 +105,7 @@ background_map_border <- list(cbind(longs, lats)) %>%
   st_sf() %>%
   st_transform(crs = crs_selected)
 
-```
-
-## 2.2 Global map MEOW
-
-```{r}
-
-# 1. Make the map ----
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_meowreefs, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(colour = guide_legend(override.aes = list(size = 5))) +
-  scale_color_manual(values = palette_duration) +
-  theme_map() +
-  theme(legend.title = element_blank())
-
-# 2. Save the map ----
-
-ggsave("../figs/01_global-meow-with-coral-reefs.png", height = 6, width = 10)
-
-```
-
-## 2.3 Global map duration
-
-```{r}
-
-# 1. Make the map ----
+# 3. Make the map ----
 
 ggplot() +
   # Background map border
@@ -147,460 +117,88 @@ ggplot() +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
-  scale_color_manual(values = palette_duration) +
+  scale_color_manual(values = palette_5cols) +
   theme_map() +
   labs(col = "Monitoring duration (years)")
 
 # 2. Save the map ----
 
-ggsave("../figs/01_global-map-site-duration.png", height = 6, width = 10)
+ggsave("../figs/01_figure-1.png", height = 6, width = 10)
 
 ```
 
-## 2.4 Regional maps duration
+## Figure 2
 
 ```{r}
 
-# 1. Transform CRS for data map ----
+# 1. Surveys by year ----
 
-data_map <- data_map %>% 
-  st_transform(., crs = 4326)
+# 1.1 Modify the data --
 
-# 2. Transform CRS for data GCRMN sites ----
+data_year <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year) %>% 
+  distinct(.)
 
-data_gcrmn_sites <- data_gcrmn_sites %>% 
-  st_transform(., crs = 4326)
+# 1.2 Make the plot --
 
-```
+plot_year <- ggplot(data_year, aes(x = Year)) +
+  # By default its density, width*density*100 gives percentage
+  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
+                 color = col_color_graph, fill = col_fill_graph) +
+  lims(y = c(0, 10)) +
+  labs(x = "Year", y = "Surveys (%)")
 
-### Australia
+# 2. Surveys by depth ----
 
-```{r}
+# 2.1 Modify the data --
 
-# 1. Create the buffer ----
+data_depth <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year, Depth) %>% 
+  distinct(.)
 
-data_buffer <- st_sf(coord = st_sfc(st_point(c(133, -25))), crs = 4326) %>%
-  st_buffer(dist = 28)
+# 2.2 Make the plot --
 
-# 2. Intersection based on buffer for data_map ----
+plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
+  # By default its density, width*density*100 gives percentage
+  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
+                 color = col_color_graph, fill = col_fill_graph) +
+  lims(x = c(0, 40), y = c(0, 30)) +
+  labs(x = "Depth (m)", y = "Surveys (%)")
 
-data_map_region <- st_intersection(data_buffer, data_map)
+# 3. Monitoring duration ----
 
-# 3. Select MEOW for the region ----
+# 3.1 Transform the data --
 
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(141, 140, 142, 150, 143, 202, 203, 204, 205, 206, 207, 208, 209, 211, 210, 145, 144))
+data_duration <- data_gcrmn_sites %>% 
+  st_drop_geometry() %>% 
+  group_by(interval_class) %>% 
+  summarise(n_abs = n()) %>% 
+  ungroup() %>% 
+  mutate(n_rel = (n_abs/sum(n_abs))*100)
 
-# 4. Filter sites ----
+# 3.2 Make the plot --
 
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)) +
+  geom_bar(stat = "identity", aes(fill = interval_class), show.legend = FALSE, col = "black") +
+  scale_fill_manual(values = palette_5cols) +
+  lims(y = c(0, 100)) +
+  labs(x = "Monitoring duration (years)", y = "Sites (%)")
 
-# 5. Make the map ----
+# 4. Make the assembled plot ----
 
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "Australia")
- 
-# 6. Save the map ----
+plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "C"))
 
-ggsave("../figs/06_meow-australia.png", dpi = 600, width = 4, height = 5)
+# 5. Save the plot ----
 
-```
+ggsave(filename = "../figs/01_figure-2.png", height = 3, width = 10)
 
-### Caribbean
+# 6. Remove useless objects ----
 
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(-85, 18))), crs = 4326) %>%
-  st_buffer(dist = 35)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(69, 43, 70, 63, 65, 64, 66, 67, 62, 59, 60, 61, 164, 165, 166, 167,
-                           168, 169, 170, 171, 172, 173, 174, 175, 68, 42))
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "Caribbean and Eastern Pacific")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-caribbean-and-eastern-pacific.png", dpi = 600, width = 4, height = 5)
+rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
 
 ```
 
-### Red Sea and Gulf
-
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(47, 20))), crs = 4326) %>%
-  st_buffer(dist = 20)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(87, 88, 89, 90, 91, 92))
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "Red Sea and Gulf")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-red-sea-and-gulf.png", dpi = 600, width = 4, height = 5)
-
-```
-
-### Western Indian Ocean
-
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(50, -12))), crs = 4326) %>%
-  st_buffer(dist = 27)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 193))
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "Western Indian Ocean")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-western-indian-ocean.png", dpi = 600, width = 4, height = 5)
-
-```
-
-### Brazil
-
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(-35, -12))), crs = 4326) %>%
-  st_buffer(dist = 18)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(73, 74, 75, 76, 77, 180))
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "Brazil")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-brazil.png", dpi = 600, width = 4, height = 5)
-
-```
-
-### South Asia
-
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(77, 10))), crs = 4326) %>%
-  st_buffer(dist = 25)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(103, 104, 105, 106, 107))
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "South Asia")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-south-asia.png", dpi = 600, width = 4, height = 5)
-
-```
-
-### East Asia
-
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(125, 4))), crs = 4326) %>%
-  st_buffer(dist = 40)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(109, 110, 111, 118, 115, 116, 114, 112, 113, 117, 119, 120, 127, 133, 126,
-                           128, 129, 130, 131, 139, 138, 134, 136, 137, 132, 125, 121, 47, 48, 49, 50, 51, 52))
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "East Asia")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-east-asia.png", dpi = 600, width = 4, height = 5)
-
-```
-
-### Pacific
-
-```{r}
-
-# 1. Create the buffer ----
-
-data_buffer <- st_sf(coord = st_sfc(st_point(c(171.5, 10))), crs = 4326) %>%
-  st_buffer(dist = 42)
-
-# 2. Intersection based on buffer for data_map ----
-
-data_map_region <- st_intersection(data_buffer, data_map)
-
-data_map_region <- st_shift_longitude(data_map_region)
-
-# 3. Select MEOW for the region ----
-
-data_meowreefs_region <- data_meowreefs %>% 
-  filter(ECO_CODE_X %in% c(124, 135, 149, 148, 122, 123, 153, 154, 147, 157, 146, 156, 155, 152))
-
-data_meowreefs_region <- st_shift_longitude(data_meowreefs_region)
-
-data_meowreefs_region <- data_meowreefs_region %<>% # Special pipe from magrittr
-  st_buffer(0.0015) # To join polygon (remove vertical line)
-
-# 4. Filter sites ----
-
-data_sites_region <- st_intersection(data_meowreefs_region, st_shift_longitude(data_gcrmn_sites))
-
-data_sites_region <- st_shift_longitude(data_sites_region)
-
-# 5. Make the map ----
-
-ggplot() +
-  # First data buffer (for ocean color background)
-  geom_sf(data = data_buffer, fill = col_background_map) +
-  # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
-  # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
-  # GCRMN sites
-  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
-  #geom_sf_text_repel(data = data_meowreefs_region, aes(label = ECO_CODE_X), size = 2, family = font_choose_map) +
-  scale_color_manual(values = palette_duration) +
-  # Second data buffer (for borders)
-  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
-  theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        panel.background = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "Pacific")
- 
-# 6. Save the map ----
-
-ggsave("../figs/06_meow-pacific.png", dpi = 600, width = 4, height = 5)
-
-```
-
-# 3. Methods used
+## Figure 3
 
 ```{r}
 
@@ -648,9 +246,6 @@ data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT",
 ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)) +
   geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.9) +
   geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
-  # Alternative using geom_stream_label but less precise
-  #geom_stream_label(type = "proportional", family = font_choose_graph) +
-  #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
   scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
   labs(y = "Percentage of surveys", x = "Year") +
@@ -658,7 +253,7 @@ ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/02_evolution-methods-used_streamplot.png", height = 4, width = 8)
+ggsave(filename = "../figs/01_figure-3.png", height = 4, width = 8)
 
 # 5. Remove useless objects ----
 
@@ -666,9 +261,9 @@ rm(data_method, data_method_label)
 
 ```
 
-# 4. Data sources
+## Figure 4
 
-```{r fig.width=10, fig.height=4}
+```{r}
 
 # 1. Filter and transform the data ----
 
@@ -693,10 +288,6 @@ data_source <- data_gcrmn %>%
 
 ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)) +
   geom_stream(type = "proportional", show.legend = TRUE, alpha = 0.9) +
-  #geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
-  # Alternative using geom_stream_label but less precise
-  #geom_stream_label(type = "proportional", family = font_choose_graph) +
-  #scale_fill_manual(values = c("#dadfe1", "#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
   scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
   labs(y = "Percentage of surveys", x = "Year") +
@@ -704,147 +295,13 @@ ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/02_evolution-data-sources_streamplot.png", height = 4, width = 8)
+ggsave(filename = "../figs/01_figure-4.png", height = 4, width = 8)
 
 ```
 
-# 5. Histograms
+## Figure 5
 
-## 5.1 Monitoring duration
-
-```{r fig.width=6, fig.height=5}
-
-# 1. Transform the data ----
-
-data_duration <- data_gcrmn_sites %>% 
-  st_drop_geometry() %>% 
-  group_by(interval_class) %>% 
-  summarise(n_abs = n()) %>% 
-  ungroup() %>% 
-  mutate(n_rel = (n_abs/sum(n_abs))*100)
-
-# 2. Make the plot ----
-
-plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)) +
-  geom_bar(stat = "identity", aes(fill = interval_class), show.legend = FALSE, col = "black") +
-  scale_fill_manual(values = palette_duration) +
-  lims(y = c(0, 100)) +
-  labs(x = "Monitoring duration (years)", y = "Sites (%)")
-
-```
-
-## 5.2 Surveys by year
-
-```{r}
-
-# 1. Modify the data ----
-
-data_year <- data_gcrmn %>% 
-  select(Latitude, Longitude, Year) %>% 
-  distinct(.)
-
-# 2. Make the plot ----
-
-plot_year <- ggplot(data_year, aes(x = Year)) +
-  # By default its density, width*density*100 gives percentage
-  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
-                 color = col_color_graph, fill = col_fill_graph) +
-  lims(y = c(0, 10)) +
-  labs(x = "Year", y = "Surveys (%)")
-
-```
-
-## 5.3 Surveys by depth
-
-```{r}
-
-# 1. Modify the data ----
-
-data_depth <- data_gcrmn %>% 
-  select(Latitude, Longitude, Year, Depth) %>% 
-  distinct(.)
-
-# 2. Make the plot ----
-
-plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
-  # By default its density, width*density*100 gives percentage
-  geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
-                 color = col_color_graph, fill = col_fill_graph) +
-  lims(x = c(0, 40), y = c(0, 30)) +
-  labs(x = "Depth (m)", y = "Surveys (%)")
-
-```
-
-## 5.4 Plot assemblage
-
-```{r}
-
-# 1. Make the plot ----
-
-plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "C"))
-
-# 2. Save the plot ----
-
-ggsave(filename = "../figs/03_combined-plots-distri-year-depth-duration.png", height = 3, width = 10)
-
-# 3. Remove useless objects ----
-
-rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
-
-```
-
-# 6. Taxonomic resolution
-
-```{r}
-
-# 1. Filter and transform the data ----
-
-data_taxo <- data_gcrmn %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
-  select(Year, Category, Group, Family, Genus, Species) %>% 
-  mutate(Tax_lvl = case_when(!(is.na(Species)) ~ "Species",
-                             !(is.na(Genus)) ~ "Genus",
-                             !(is.na(Family)) ~ "Family",
-                             !(is.na(Group)) ~ "Group",
-                             !(is.na(Category)) ~ "Category")) %>%
-  mutate(Tax_lvl = fct_relevel(Tax_lvl, c("Category", "Group", "Family", "Genus", "Species"))) %>% 
-  group_by(Year, Tax_lvl) %>% 
-  count(name = "Abs") %>% 
-  ungroup() %>% 
-  complete(Tax_lvl, fill = list(Abs = 0)) %>% 
-  group_by(Year) %>% 
-  mutate(Rel = (Abs/sum(Abs))*100)
-
-# 2. Define label positions ----
-
-data_taxo_label <- tibble(Tax_lvl = c("Category", "Group", "Family", "Genus", "Species"),
-                          x = c(1990, 2010, 1998, 2000, 2010),
-                          y = c(0.875, 0.65, 0.4, 0.2, 0.1))
-
-# 3. Make the plot ----
-
-ggplot(data = data_taxo, aes(x = Year, y = Rel, fill = Tax_lvl, label = Tax_lvl)) +
-  geom_stream(type = "proportional", show.legend = FALSE) +
-  geom_text(data = data_taxo_label, aes(x = x, y = y, label = Tax_lvl), family = font_choose_graph) +
-  # Alternative using geom_stream_label but less precise
-  #geom_stream_label(type = "proportional", family = font_choose_graph) +
-  scale_fill_manual(values = c("#FFC740", "#C20008", "#FF020D", "#13AFEF", "#2abb9b")) +
-  lims(x = c(1980, 2020)) +
-  labs(y = "Percentage of surveys", x = "Year")
-
-# 4. Save the plot ----
-
-ggsave(filename = "../figs/04_evolution-taxo-resolution_streamplot.png", height = 4, width = 8)
-
-# 5. Remove useless objects ----
-
-rm(data_taxo, data_taxo_label)
-
-```
-
-# 7. Comparison between ecoregions
-
-## 7.1 Calculation of descriptors
+### Calculation of descriptors
 
 ```{r}
 
@@ -940,6 +397,8 @@ data_descriptors <- data_descriptors %>%
 
 ```
 
+### Pixel descriptor 
+
 ```{r}
 
 # 1. Import data on coral reefs distribution ----
@@ -999,7 +458,7 @@ ggplot() +
 
 # 8.2 Save the map --
 
-ggsave(filename = "../figs/09_dataviz-size-pixel.png", height = 6, width = 8)
+ggsave(filename = "../figs/03_map-size-pixel.png", height = 6, width = 8)
 
 # 9. Remove useless objects ----
 
@@ -1007,7 +466,906 @@ rm(data_reefs, grid_reefs, pixel_total, pixel_monitoring, data_meow)
 
 ```
 
-## 7.2 Lollipop
+### PCA and HCPC
+
+```{r}
+
+# 1. PCA ----
+
+# 1.1 Make the PCA --
+
+data_descriptors_pca <- as_tibble(data_descriptors) %>% 
+  select(ECOREGION, n_sites_abs, n_surveys_abs, first_year, n_15_abs, n_years_abs, n_percent)
+
+res_pca <- PCA(data_descriptors_pca[,-1])
+
+# 2. HCPC ----
+
+# 2.1 Make the HCPC --
+
+res_hcpc <- HCPC(res_pca, nb.clust = 5) # Arbitrary selection of the number of cluster 
+# (remove nb.clust argument to define the cutting by a click)
+
+# 2.2 Save the plots --
+
+png("./../figs/03_hcpc-tree.png", width = 1600, height = 1600, res = 300)
+plot.HCPC(res_hcpc, choice = "tree")
+dev.off()
+
+png("./../figs/03_hcpc-map.png", width = 1600, height = 1600, res = 300)
+plot.HCPC(res_hcpc, choice = "map")
+dev.off()
+
+```
+
+### Graphical output
+
+```{r}
+
+# 1. Graph of variables ----
+
+# 1.1 Extract and transform the data --
+
+data_var <- as_tibble(res_pca$var$coord) %>% 
+  bind_cols(var = rownames(res_pca$var$coord), .) %>% 
+  select(var, Dim.1, Dim.2)
+
+# 1.2 Make the graph --
+
+plot_var <- ggplot(data = data_var) +
+  geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var)) +
+  geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
+                  arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  lims(x = c(-1, 1), y = c(-1, 1)) +
+  geom_circle(data = data.frame(x0 = 0, y0 = 0, r = 1), # From ggforce package
+              aes(x0 = x0, y0 = y0, r = r)) +
+  coord_fixed() +
+  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
+
+ggsave(plot_var, filename = "./../figs/03_pca-graph-var.png", height = 6, width = 6)
+
+# 2. Graph of individuals ----
+
+# 2.1 Extract and transform the data --
+
+data_hcpc_descriptors <- res_hcpc$data.clust %>% 
+  mutate(ind = rownames(.))
+
+data_hcpc_cluster <- res_hcpc$call$X %>% 
+  mutate(ind = rownames(.))
+
+data_ind <- left_join(data_hcpc_cluster, data_hcpc_descriptors) %>% 
+  left_join(data_descriptors, .) %>% 
+  st_as_sf() %>% 
+  select(ECOREGION, ECO_CODE_X, Dim.1, Dim.2, clust) %>% 
+  # Change numbering of clusters to match with logical order for interpretation
+  mutate(clust = as.character(clust),
+         clust = replace_na(clust, "6"),
+         clust = case_when(clust == "1" ~ "5",
+                           clust == "2" ~ "4",
+                           clust == "4" ~ "2",
+                           clust == "5" ~ "1",
+                           TRUE ~ clust))
+
+# Palette of colors for each cluster
+palette_cluster <- c("1" = "#4575b4",
+                     "2" = "#91bfdb",
+                     "3" = "#e0f3f8",
+                     "4" = "#fee090",
+                     "5" = "#fc8d59",
+                     "6" = "#d73027")
+
+# Get the numbers of ecoregions for each cluster
+legend_cluster <- data_ind %>%
+  st_drop_geometry() %>% 
+  group_by(clust) %>% 
+  count()
+
+# Legend labels for each cluster
+legend_cluster <- c("1" = glue("<b>1.</b> Very high spatio-temporal coverage (<i>n</i> = 2)"),
+                    "2" = glue("<b>2.</b> High spatio-temporal coverage (<i>n</i> = 8)"),
+                    "3" = glue("<b>3.</b> Medium spatial, medium temporal coverage (<i>n</i> = 32)"),
+                    "4" = glue("<b>4.</b> Medium spatial, low temporal coverage (<i>n</i> = 23)"),
+                    "5" = glue("<b>5.</b> Low spatial, low temporal coverage (<i>n</i> = 29)"),
+                    "6" = glue("<b>6.</b> No data (<i>n</i> = 12)"))
+
+# 2.2 Make the graph without clusters colors --
+
+ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
+  geom_point(size = 4) +
+  geom_text_repel(show.legend = FALSE, size = 3, seed = 20, max.overlaps = 5, family = font_choose_graph) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
+
+ggsave(filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, width = 6)
+
+# 2.3 With clusters colors --
+
+ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clust)) +
+  geom_point(show.legend = FALSE, size = 4, shape = 21, col = "black") +
+  geom_text_repel(show.legend = FALSE, size = 3, seed = 20, max.overlaps = 5, family = font_choose_graph) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
+  scale_fill_manual(values = palette_cluster)
+
+ggsave(filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6)
+
+# 3. Map with all clusters ----
+
+# 3.1 Make the map --
+
+ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # Clusters
+  geom_sf(data = data_ind, aes(fill = clust)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
+  theme_map() +
+  theme(legend.position = "right", 
+        legend.direction = "vertical",
+        legend.title = element_text(face = "bold"),
+        legend.text = element_markdown()) +
+  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
+
+# 3.2 Save the map --
+
+ggsave(filename = "./../figs/01_figure-5.png", height = 5, width = 12)
+
+# 4. Map by cluster ----
+
+for(i in 1:6){
+  
+  # 4.1 Make the map --
+
+  ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_meowreefs, fill = "white") +
+  # Clusters
+  geom_sf(data = data_ind %>% filter(clust == as.character(i)), aes(fill = clust)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
+  theme_map() +
+  theme(legend.position = "right", 
+        legend.direction = "vertical",
+        legend.title = element_text(face = "bold"),
+        legend.text = element_markdown()) +
+  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
+
+  # 4.2 Save the map --
+
+  ggsave(filename = paste0("./../figs/03_map-cluster-", i,".png"), height = 5, width = 12)
+
+}
+
+# 5. Remove useless objects ----
+
+rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster)
+
+```
+
+# Supplementary
+
+## Regional maps
+
+```{r}
+
+# 1. Transform CRS for data map ----
+
+data_map <- data_map %>% 
+  st_transform(., crs = 4326)
+
+# 2. Transform CRS for data GCRMN sites ----
+
+data_gcrmn_sites <- data_gcrmn_sites %>% 
+  st_transform(., crs = 4326)
+
+```
+
+### Australia
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(133, -25))), crs = 4326) %>%
+  st_buffer(dist = 28)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(141, 140, 142, 150, 143, 202, 203, 204, 205, 206, 207, 208, 209, 211, 210, 145, 144))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Australia")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-australia.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Caribbean
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(-85, 18))), crs = 4326) %>%
+  st_buffer(dist = 35)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(69, 43, 70, 63, 65, 64, 66, 67, 62, 59, 60, 61, 164, 165, 166, 167,
+                           168, 169, 170, 171, 172, 173, 174, 175, 68, 42))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Caribbean and Eastern Pacific")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-caribbean.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Red Sea and Gulf
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(47, 20))), crs = 4326) %>%
+  st_buffer(dist = 20)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(87, 88, 89, 90, 91, 92))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Red Sea and Gulf")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-red-sea-and-gulf.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Western Indian Ocean
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(50, -12))), crs = 4326) %>%
+  st_buffer(dist = 27)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 193))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Western Indian Ocean")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-wio.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Brazil
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(-35, -12))), crs = 4326) %>%
+  st_buffer(dist = 18)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(73, 74, 75, 76, 77, 180))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Brazil")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-brazil.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### South Asia
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(77, 10))), crs = 4326) %>%
+  st_buffer(dist = 25)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(103, 104, 105, 106, 107))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "South Asia")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-south-asia.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### East Asia
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(125, 4))), crs = 4326) %>%
+  st_buffer(dist = 40)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(109, 110, 111, 118, 115, 116, 114, 112, 113, 117, 119, 120, 127, 133, 126,
+                           128, 129, 130, 131, 139, 138, 134, 136, 137, 132, 125, 121, 47, 48, 49, 50, 51, 52))
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, data_gcrmn_sites)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "East Asia")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-east-asia.png", dpi = 600, width = 4, height = 5)
+
+```
+
+### Pacific
+
+```{r}
+
+# 1. Create the buffer ----
+
+data_buffer <- st_sf(coord = st_sfc(st_point(c(171.5, 10))), crs = 4326) %>%
+  st_buffer(dist = 42)
+
+# 2. Intersection based on buffer for data_map ----
+
+data_map_region <- st_intersection(data_buffer, data_map)
+
+data_map_region <- st_shift_longitude(data_map_region)
+
+# 3. Select MEOW for the region ----
+
+data_meowreefs_region <- data_meowreefs %>% 
+  filter(ECO_CODE_X %in% c(124, 135, 149, 148, 122, 123, 153, 154, 147, 157, 146, 156, 155, 152))
+
+data_meowreefs_region <- st_shift_longitude(data_meowreefs_region)
+
+data_meowreefs_region <- data_meowreefs_region %<>% # Special pipe from magrittr
+  st_buffer(0.0015) # To join polygon (remove vertical line)
+
+# 4. Filter sites ----
+
+data_sites_region <- st_intersection(data_meowreefs_region, st_shift_longitude(data_gcrmn_sites))
+
+data_sites_region <- st_shift_longitude(data_sites_region)
+
+# 5. Make the map ----
+
+ggplot() +
+  # First data buffer (for ocean color background)
+  geom_sf(data = data_buffer, fill = col_background_map) +
+  # MEOW
+  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  # Background map
+  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  # GCRMN sites
+  geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
+  scale_color_manual(values = palette_5cols) +
+  # Second data buffer (for borders)
+  geom_sf(data = data_buffer, fill = NA, size = 0.75) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 16)) +
+  labs(title = "Pacific")
+ 
+# 6. Save the map ----
+
+ggsave("../figs/03_regional-map-pacific.png", dpi = 600, width = 4, height = 5)
+
+```
+
+## Maps of descriptors
+
+### Reef area
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$area_rel)
+
+data_descriptors_maps <- data_descriptors %>% 
+  mutate(area_rel_cut = cut(area_rel, breaks = c(0, 0.25, 2, 4, 10), include.lowest = TRUE))
+
+# 2. Make the map ----
+
+map_area <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = area_rel_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             title = "Relative coral reef area (%)",
+                             nrow = 2, byrow = TRUE)) +
+  labs(title = "AREA") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_area, file = "../figs/03_map-descriptor-reef-area.png", height = 6, width = 10)
+
+```
+
+### Pixel with data
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$area_rel)
+
+data_descriptors_maps <- data_descriptors %>% 
+  mutate(percent_n_cut = cut(n_percent, breaks = c(0, 25, 50, 75, 100), include.lowest = TRUE))
+
+# 2. Make the map ----
+
+map_pixel <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = percent_n_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             title = "Percentage of pixel with data")) +
+  labs(title = "SPATIAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_pixel, file = "../figs/03_map-descriptor-pixel.png", height = 6, width = 10)
+
+```
+
+### First year
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$first_year)
+
+data_descriptors_maps <- data_descriptors %>% 
+  mutate(first_year_cut = case_when(is.na(first_year) ~ "No data",
+                                    first_year >= 1980 & first_year < 2000 ~ "1980 - 1999",
+                                    first_year >= 2000 & first_year < 2010 ~ "2000 - 2009",
+                                    first_year >= 2010 ~ "> 2010"),
+                    first_year_cut = factor(first_year_cut, 
+                                            levels = c("1980 - 1999", "2000 - 2009", "> 2010", "No data")))
+
+# 2. Make the map ----
+
+map_first <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = first_year_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu", direction = -1) +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             title = "Year with first monitoring")) +
+  labs(title = "TEMPORAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_first, file = "../figs/03_map-descriptor-first-year.png", height = 6, width = 10)
+
+```
+
+### Years with data
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$n_years_abs)
+
+data_descriptors_maps <- data_descriptors %>% 
+    mutate(n_years_abs_cut = case_when(n_years_abs == 0 ~ "No data",
+                                       n_years_abs > 0 & n_years_abs <= 10 ~ "1 - 10",
+                                       n_years_abs > 10 & n_years_abs <= 20 ~ "11 - 20",
+                                       n_years_abs > 20 ~ "> 21"),
+           n_years_abs_cut = factor(n_years_abs_cut, levels = c("No data", "1 - 10", "11 - 20", "> 21")))
+
+# 2. Make the map ----
+
+map_years <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = n_years_abs_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             title = "Number of years with data over 1980 - 2020")) +
+  labs(title = "TEMPORAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_years, file = "../figs/03_map-descriptor-years.png", height = 6, width = 10)
+
+```
+
+### Surveys
+
+```{r}
+
+# 1. Create bins ----
+
+hist(data_descriptors$n_surveys_rel)
+
+data_descriptors_maps <- data_descriptors %>% 
+    mutate(n_surveys_rel_cut = case_when(n_surveys_rel == 0 ~ "No data",
+                                         n_surveys_rel > 0 & n_surveys_rel <= 0.5 ~ "(0,0.5]",
+                                         n_surveys_rel > 0.5 & n_surveys_rel <= 1 ~ "(0.5,1]",
+                                         n_surveys_rel > 1 ~ "> 1"),
+           n_surveys_rel_cut = factor(n_surveys_rel_cut, levels = c("No data", "(0,0.5]", "(0.5,1]", "> 1")))
+
+# 2. Make the map ----
+
+map_surveys <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = n_surveys_rel_cut)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             title = "Relative number of surveys (%)")) +
+  labs(title = "SPATIAL") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_surveys, file = "../figs/03_map-descriptor-surveys.png", height = 6, width = 10)
+
+```
+
+### Methods
+
+```{r}
+
+# 1. Create bins ----
+
+data_descriptors_maps <- data_gcrmn_meow %>% 
+  filter(Year > 1980 & Year <= 2018) %>%   
+  select(Latitude, Longitude, Year, Method, ECOREGION) %>% 
+  distinct(.) %>% 
+  left_join(data_meowreefs, .) %>% 
+  mutate(Method = str_split_fixed(Method, ",", 6)[,1],
+         Method = str_to_lower(Method),
+         Method = str_trim(Method, side = "both"),
+         Method = str_squish(Method),
+         Method = case_when(Method %in% c("line intercept transect", 
+                                          "line intersect transect",
+                                          "lit") ~ "LIT",
+                            Method %in% c("point intercept method",
+                                          "point intercept transect",
+                                          "point intersect transect",
+                                          "pit") ~ "PIT",
+                            Method %in% c("photo-quadrat",
+                                          "Photo-quadrat",
+                                          "underwater photo transect") ~ "Photo-quadrat",
+                            Method %in% c("visual census",
+                                          "visual quadrat estimation",
+                                          "vis est.") ~ "Visual census",
+                            Method == "video-transect" ~ "Video transect",
+                            TRUE ~ "Unknown")) %>%
+  mutate(Method = as.factor(Method),
+         Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
+  group_by(Method, ECOREGION) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  group_by(ECOREGION) %>% 
+  filter(Abs == max(Abs)) %>% 
+  select(-Abs) %>% 
+  st_as_sf()
+
+# 2. Make the map ----
+
+map_methods <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_descriptors_maps, aes(fill = Method)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             title = "Most used method")) +
+  labs(title = "METHOD") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_methods, file = "../figs/03_map-descriptor-methods.png", height = 6, width = 10)
+
+```
+
+### Bind plots
+
+```{r fig.height=12, fig.width=10}
+
+# 1. Make the map ----
+
+plot_grid(map_area, map_methods, map_pixel, map_surveys, map_first, map_years, map_methods, nrow = 3, ncol = 2)
+
+# 2. Save the map ----
+
+ggsave(file = "../figs/02_supplementary-2.png", height = 12, width = 10)
+
+```
+
+## Table of descriptors
+
+```{r}
+
+data_descriptors %>% 
+  select(ECO_CODE_X, ECOREGION, area_abs, area_rel, n_1_abs, n_2_5_abs, n_6_10_abs, 
+         n_11_15_abs, n_15_abs, n_surveys_abs, n_years_abs, first_year, n_percent) %>%
+  rename(Code = ECO_CODE_X, Name = ECOREGION, Surveys = n_surveys_abs) %>% 
+  st_drop_geometry() %>% 
+  mutate(area_abs = round(area_abs*1e-6, 1),
+         area_rel = round(area_rel, 3),
+         n_percent = round(n_percent, 1)) %>%
+  write.csv2(., file = "../figs/02_table-of-descriptors.csv", row.names = FALSE)
+
+```
+
+# Additional figures
 
 ```{r fig.height=15, fig.width=10}
 
@@ -1070,555 +1428,11 @@ plot_grid(plot_area, plot_surveys, plot_years, plot_pixel, nrow = 1, rel_widths 
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/09_ecoregions-data-descriptors.png", height = 15, width = 14)
+ggsave(filename = "../figs/03_lollipop-ecoregions-data-descriptors.png", height = 15, width = 14)
 
 # 5. Remove useless objects ----
 
 rm(plot_area, plot_surveys, plot_years, plot_pixel)
-
-```
-
-## 7.3 Multivariate approach
-
-### 7.3.1 Analyses
-
-```{r}
-
-# 1. PCA ----
-
-# 1.1 Make the PCA --
-
-data_descriptors_pca <- as_tibble(data_descriptors) %>% 
-  select(ECOREGION, n_sites_abs, n_surveys_abs, first_year, n_15_abs, n_years_abs, n_percent)
-
-res_pca <- PCA(data_descriptors_pca[,-1])
-
-# 1.2 Assemble plots --
-
-plot_grid(plot.PCA(res_pca, choix = "ind"), 
-          plot.PCA(res_pca, choix = "var"))
-
-# 1.3 Save the plot --
-
-ggsave(filename = "./../figs/10_multivariate-approach-pca.png")
-
-# 2. HCPC ----
-
-# 2.1 Make the HCPC --
-
-res_hcpc <- HCPC(res_pca, nb.clust=5) # Arbitrary selection of the number of cluster 
-# (remove nb.clust argument to define the cutting by a click)
-
-# 2.2 Save the plots --
-
-png("./../figs/10_multivariate-approach-hcpc1.png", width = 1600, height = 1600, res = 300)
-plot.HCPC(res_hcpc, choice = "tree")
-dev.off()
-
-png("./../figs/10_multivariate-approach-hcpc2.png", width = 1600, height = 1600, res = 300)
-plot.HCPC(res_hcpc, choice = "map")
-dev.off()
-
-```
-
-### 7.3.2 Figures
-
-```{r}
-
-# 1. Graph of variables ----
-
-# 1.1 Extract and transform the data --
-
-data_var <- as_tibble(res_pca$var$coord) %>% 
-  bind_cols(var = rownames(res_pca$var$coord), .) %>% 
-  select(var, Dim.1, Dim.2)
-
-# 1.2 Make the graph --
-
-ggplot(data = data_var) +
-  geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var)) +
-  geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
-                  arrow = arrow(length = unit(0.25, "cm"))) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  lims(x = c(-1, 1), y = c(-1, 1)) +
-  geom_circle(data = data.frame(x0 = 0, y0 = 0, r = 1), # From ggforce package
-              aes(x0 = x0, y0 = y0, r = r)) +
-  coord_fixed() +
-  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
-       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
-
-ggsave(filename = "./../figs/10_multi-approach_graph-var.png", height = 6, width = 6)
-
-# 2. Graph of individuals ----
-
-# 2.1 Extract and transform the data --
-
-data_hcpc_descriptors <- res_hcpc$data.clust %>% 
-  mutate(ind = rownames(.))
-
-data_hcpc_cluster <- res_hcpc$call$X %>% 
-  mutate(ind = rownames(.))
-
-data_ind <- left_join(data_hcpc_cluster, data_hcpc_descriptors) %>% 
-  left_join(data_descriptors, .) %>% 
-  st_as_sf() %>% 
-  select(ECOREGION, ECO_CODE_X, Dim.1, Dim.2, clust) %>% 
-  # Change numbering of clusters to match with logical order for interpretation
-  mutate(clust = as.character(clust),
-         clust = replace_na(clust, "6"),
-         clust = case_when(clust == "1" ~ "5",
-                           clust == "2" ~ "4",
-                           clust == "4" ~ "2",
-                           clust == "5" ~ "1",
-                           TRUE ~ clust))
-
-# Palette of colors for each cluster
-palette_cluster <- c("1" = "#03a678",
-                     "2" = "#68c3a3",
-                     "3" = "#19b5fe",
-                     "4" = "#eb9532",
-                     "5" = "#d64541",
-                     "6" = "#6c7a89")
-
-# Get the numbers of ecoregions for each cluster
-legend_cluster <- data_ind %>%
-  st_drop_geometry() %>% 
-  group_by(clust) %>% 
-  count()
-
-# Legend labels for each cluster
-legend_cluster <- c("1" = glue("<b>1.</b> Very high spatio-temporal coverage (<i>n</i> = 2)"),
-                    "2" = glue("<b>2.</b> High spatio-temporal coverage (<i>n</i> = 8)"),
-                    "3" = glue("<b>3.</b> Medium spatial, medium temporal coverage (<i>n</i> = 32)"),
-                    "4" = glue("<b>4.</b> Medium spatial, low temporal coverage (<i>n</i> = 23)"),
-                    "5" = glue("<b>5.</b> Low spatial, low temporal coverage (<i>n</i> = 29)"),
-                    "6" = glue("<b>6.</b> No data (<i>n</i> = 12)"))
-
-# 2.2 Make the graph without clusters colors --
-
-ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
-  geom_point(size = 2) +
-  geom_text(show.legend = FALSE, size = 3, nudge_x = 0.25) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
-       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
-
-ggsave(filename = "./../figs/10_multi-approach_graph-ind.png", height = 6, width = 6)
-
-# 2.3 With clusters colors --
-
-ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, col = clust)) +
-  geom_point(show.legend = FALSE, size = 2) +
-  geom_text(show.legend = FALSE, size = 3, nudge_x = 0.25) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
-       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
-  scale_color_manual(values = palette_cluster)
-
-ggsave(filename = "./../figs/10_multi-approach_graph-ind-clust.png", height = 6, width = 6)
-
-# 3. Map with all clusters ----
-
-# 3.1 Make the map --
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # Clusters
-  geom_sf(data = data_ind, aes(fill = clust)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
-  theme_map() +
-  theme(legend.position = "right", 
-        legend.direction = "vertical",
-        legend.title = element_text(face = "bold"),
-        legend.text = element_markdown()) +
-  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
-
-# 3.2 Save the map --
-
-ggsave(filename = "./../figs/10_multi-approach_map.png", height = 5, width = 12)
-
-# 4. Map by cluster ----
-
-for(i in 1:6){
-  
-  # 4.1 Make the map --
-
-  ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_meowreefs, fill = "#ecf0f1") +
-  # Clusters
-  geom_sf(data = data_ind %>% filter(clust == as.character(i)), aes(fill = clust)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
-  theme_map() +
-  theme(legend.position = "right", 
-        legend.direction = "vertical",
-        legend.title = element_text(face = "bold"),
-        legend.text = element_markdown()) +
-  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
-
-  # 4.2 Save the map --
-
-  ggsave(filename = paste0("./../figs/10_multi-approach_map_cluster-", i,".png"), height = 5, width = 12)
-
-}
-
-# 5. Remove useless objects ----
-
-rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster)
-
-```
-
-## 7.4 Surveys effort vs reef area
-
-```{r}
-
-# 1. Survey effort vs reef area ----
-
-# 1.1 Make the plot --
-
-ggplot(data = data_descriptors, aes(x = area_rel, y = n_surveys_rel, label = ECO_CODE_X)) +
-  geom_point() +
-  geom_text_repel() +
-  geom_abline(intercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Relative surveys number (%)")
-
-# 1.2 Save the plot --
-
-ggsave(filename = "./../figs/11_survey-effort-vs-reef-area_raw.png", height = 8, width = 8)
-
-# 2. Deviation of survey effort vs reef area ----
-
-# 2.1 Calculate the deviation from expected for surveys --
-
-data_descriptors_effort <- data_descriptors %>% 
-  mutate(survey_deviation = n_surveys_rel - area_rel) %>% 
-  st_as_sf()
-
-# 2.2 Make the plot --
-
-palette_fill <- c("#d64541", "white", "#03a678")
-
-ggplot(data = data_descriptors_effort, aes(x = area_rel, y = survey_deviation, label = ECO_CODE_X, fill = survey_deviation)) +
-  geom_segment(aes(x = area_rel, xend = area_rel, y = 0, yend = survey_deviation), col = "black") +
-  geom_point(size = 3, shape = 21, show.legend = FALSE) +
-  geom_text_repel(col = "black") +
-  geom_hline(yintercept = 0) +
-  labs(x = "Relative reef surface (%)", y = "Deviation from expected") +
-  lims(y = c(-10, 10)) +
-  scale_fill_gradientn(colours = palette_fill, limits = c(-10, 10), breaks = c(-10, -5, 0, 5, 10))
-
-# 2.3 Save the plot --
-
-ggsave(filename = "./../figs/11_survey-effort-vs-reef-area_graph-deviation.png", height = 4, width = 6)
-
-# 3. Map of deviation ----
-
-# 3.1 Make the plot --
-
-ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_effort, aes(fill = survey_deviation)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  # Set guide colours
-  scale_fill_gradientn(colours = palette_fill, limits = c(-10, 10), breaks = c(-10, -5, 0, 5, 10)) +
-  guides(fill = guide_colourbar(title = "Deviation from expected",
-                                title.position = "top",
-                                barwidth = 18,
-                                barheight = 1,
-                                frame.colour = "black",
-                                frame.linewidth = 1,
-                                label.theme = element_text(family = font_choose_map,
-                                                           size = 10),
-                                ticks.colour = "black")) +  
-  theme_map()
-
-# 3.2 Save the map --
-
-ggsave("../figs/11_survey-effort-vs-reef-area_map-deviation.png", height = 6, width = 10)
-
-```
-
-## 7.5 Maps of descriptors
-
-### 7.5.1 Reef area
-
-```{r}
-
-# 1. Create bins ----
-
-hist(data_descriptors$area_rel)
-
-data_descriptors_maps <- data_descriptors %>% 
-  mutate(area_rel_cut = cut(area_rel, breaks = c(0, 0.25, 2, 4, 8), include.lowest = TRUE))
-
-# 2. Make the map ----
-
-map_area <- ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_maps, aes(fill = area_rel_cut)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_manual(values = palette_fill_2) +
-  guides(fill = guide_legend(title.position = "top",
-                      title.hjust = 0.5,
-                      title = "Relative coral reef area (%)")) +
-  labs(title = "AREA") + 
-  theme_map2()
-
-# 3. Save the map ----
-
-ggsave(map_area, file = "../figs/10_global-map_reef-area.png", height = 6, width = 10)
-
-```
-
-### 7.5.2 Pixel with data
-
-```{r}
-
-# 1. Create bins ----
-
-hist(data_descriptors$area_rel)
-
-data_descriptors_maps <- data_descriptors %>% 
-  mutate(percent_n_cut = cut(n_percent, breaks = c(0, 25, 50, 75, 100), include.lowest = TRUE))
-
-# 2. Make the map ----
-
-map_pixel <- ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_maps, aes(fill = percent_n_cut)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_manual(values = palette_fill_2) +
-  guides(fill = guide_legend(title.position = "top",
-                      title.hjust = 0.5,
-                      title = "Percentage of pixel with data")) +
-  labs(title = "SPATIAL") + 
-  theme_map2()
-
-# 3. Save the map ----
-
-ggsave(map_pixel, file = "../figs/10_global-map_pixel-with-data.png", height = 6, width = 10)
-
-```
-
-### 7.5.3 First year
-
-```{r}
-
-# 1. Create bins ----
-
-hist(data_descriptors$first_year)
-
-data_descriptors_maps <- data_descriptors %>% 
-  mutate(first_year_cut = case_when(is.na(first_year) ~ "No data",
-                                    first_year >= 1980 & first_year < 2000 ~ "1980 - 1999",
-                                    first_year >= 2000 & first_year < 2010 ~ "2000 - 2009",
-                                    first_year >= 2010 ~ "> 2010"),
-                    first_year_cut = factor(first_year_cut, 
-                                            levels = c("1980 - 1999", "2000 - 2009", "> 2010", "No data")))
-
-# 2. Make the map ----
-
-map_first <- ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_maps, aes(fill = first_year_cut)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_manual(values = rev(palette_fill_2)) +
-  guides(fill = guide_legend(title.position = "top",
-                      title.hjust = 0.5,
-                      title = "Year with first monitoring")) +
-  labs(title = "TEMPORAL") + 
-  theme_map2()
-
-# 3. Save the map ----
-
-ggsave(map_first, file = "../figs/10_global-map_first-year.png", height = 6, width = 10)
-
-```
-
-### 7.5.4 Years with data
-
-```{r}
-
-# 1. Create bins ----
-
-hist(data_descriptors$n_years_abs)
-
-data_descriptors_maps <- data_descriptors %>% 
-    mutate(n_years_abs_cut = case_when(n_years_abs == 0 ~ "No data",
-                                       n_years_abs > 0 & n_years_abs <= 10 ~ "1 - 10",
-                                       n_years_abs > 10 & n_years_abs <= 20 ~ "11 - 20",
-                                       n_years_abs > 20 ~ "> 21"),
-           n_years_abs_cut = factor(n_years_abs_cut, levels = c("No data", "1 - 10", "11 - 20", "> 21")))
-
-# 2. Make the map ----
-
-map_years <- ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_maps, aes(fill = n_years_abs_cut)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_manual(values = palette_fill_2) +
-  guides(fill = guide_legend(title.position = "top",
-                      title.hjust = 0.5,
-                      title = "Number of years with data over 1980 - 2020")) +
-  labs(title = "TEMPORAL") + 
-  theme_map2()
-
-# 3. Save the map ----
-
-ggsave(map_years, file = "../figs/10_global-map_years-with-data.png", height = 6, width = 10)
-
-```
-
-### 7.5.5 Surveys
-
-```{r}
-
-# 1. Create bins ----
-
-hist(data_descriptors$n_surveys_rel)
-
-data_descriptors_maps <- data_descriptors %>% 
-    mutate(n_surveys_rel_cut = case_when(n_surveys_rel == 0 ~ "No data",
-                                         n_surveys_rel > 0 & n_surveys_rel <= 0.5 ~ "(0,0.5]",
-                                         n_surveys_rel > 0.5 & n_surveys_rel <= 1 ~ "(0.5,1]",
-                                         n_surveys_rel > 1 ~ "> 1"),
-           n_surveys_rel_cut = factor(n_surveys_rel_cut, levels = c("No data", "(0,0.5]", "(0.5,1]", "> 1")))
-
-# 2. Make the map ----
-
-map_surveys <- ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_maps, aes(fill = n_surveys_rel_cut)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_manual(values = palette_fill_2) +
-  guides(fill = guide_legend(title.position = "top",
-                      title.hjust = 0.5,
-                      title = "Relative number of surveys (%)")) +
-  labs(title = "SPATIAL") + 
-  theme_map2()
-
-# 3. Save the map ----
-
-ggsave(map_surveys, file = "../figs/10_global-map_relative-surveys.png", height = 6, width = 10)
-
-```
-
-### 7.5.6 Methods
-
-```{r}
-
-# 1. Create bins ----
-
-data_descriptors_maps <- data_gcrmn_meow %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
-  select(Latitude, Longitude, Year, Method, ECOREGION) %>% 
-  distinct(.) %>% 
-  mutate(Method = str_split_fixed(Method, ",", 6)[,1],
-         Method = str_to_lower(Method),
-         Method = str_trim(Method, side = "both"),
-         Method = str_squish(Method),
-         Method = case_when(Method %in% c("line intercept transect", 
-                                          "line intersect transect",
-                                          "lit") ~ "LIT",
-                            Method %in% c("point intercept method",
-                                          "point intercept transect",
-                                          "point intersect transect",
-                                          "pit") ~ "PIT",
-                            Method %in% c("photo-quadrat",
-                                          "Photo-quadrat",
-                                          "underwater photo transect") ~ "Photo-quadrat",
-                            Method %in% c("visual census",
-                                          "visual quadrat estimation",
-                                          "vis est.") ~ "Visual census",
-                            Method == "video-transect" ~ "Video transect",
-                            TRUE ~ "Unknown")) %>% 
-  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
-  group_by(Method, ECOREGION) %>% 
-  count(name = "Abs") %>% 
-  ungroup() %>% 
-  group_by(ECOREGION) %>% 
-  filter(Abs == max(Abs)) %>% 
-  select(-Abs) %>% 
-  left_join(data_meowreefs, .) %>% 
-  st_as_sf()
-
-# 2. Make the map ----
-
-map_methods <- ggplot() +
-  # Background map border
-  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
-  # MEOW
-  geom_sf(data = data_descriptors_maps, aes(fill = Method)) +
-  # Background map
-  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdBu") +
-  guides(fill = guide_legend(title.position = "top",
-                      title.hjust = 0.5,
-                      title = "Most used method")) +
-  labs(title = "METHOD") + 
-  theme_map2()
-
-# 3. Save the map ----
-
-ggsave(map_methods, file = "../figs/10_global-map_most-used-method.png", height = 6, width = 10)
-
-```
-
-### 7.5.7 Bind plots
-
-```{r fig.height=12, fig.width=10}
-
-# 1. Make the map ----
-
-plot_grid(map_area, NULL, map_pixel, map_surveys, map_first, map_years, map_methods, nrow = 3, ncol = 2)
-
-# 2. Save the map ----
-
-ggsave(file = "../figs/10_global-map_combined-maps.png", height = 12, width = 10)
-
-```
-
-# 8. Supplementary table
-
-```{r}
-
-data_descriptors %>% 
-  select(ECO_CODE_X, ECOREGION, area_abs, area_rel, n_1_abs, n_2_5_abs, n_6_10_abs, 
-         n_11_15_abs, n_15_abs, n_surveys_abs, n_years_abs, first_year, n_percent) %>%
-  rename(Code = ECO_CODE_X, Name = ECOREGION, Surveys = n_surveys_abs) %>% 
-  st_drop_geometry() %>% 
-  mutate(area_abs = round(area_abs*1e-6, 1),
-         area_rel = round(area_rel, 3),
-         n_percent = round(n_percent, 1)) %>%
-  write.csv2(., file = "../figs/xx_supplementary-table.csv", row.names = FALSE)
 
 ```
 
