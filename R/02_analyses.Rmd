@@ -944,12 +944,12 @@ data_descriptors <- data_descriptors %>%
 
 # 1. Import data on coral reefs distribution ----
 
-data_reefs <- read_sf("./../data/01_reefs-distribution-wri/reef_500_poly.shp") %>% 
+data_reefs <- read_sf("./../data/01_reefs-distribution-unep-wcmc/01_Data/WCMC008_CoralReef2018_Py_v4_1.shp") %>% 
   st_transform(crs = 4326) %>% 
   st_wrap_dateline(options = c("WRAPDATELINE=YES")) %>% 
   st_make_valid()
 
-# 2. Create a grid cells of 0.5° ----
+# 2. Create a grid cells of 1° ----
 
 grid_reefs <- st_make_grid(data_reefs, cellsize = 1) %>% 
   st_as_sf() %>% 
