@@ -9,8 +9,6 @@ font_choose_map <- "LM Sans 10"
 
 # 3. Set the colors ----
 
-col_fill_graph <- "#89C4F4"
-col_color_graph <- "#446CB3"
 col_fill_map <- "#f2caae"
 col_color_map <- "#888888"
 col_background_map <- "#e4f1fe"

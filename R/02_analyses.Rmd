@@ -144,7 +144,7 @@ data_year <- data_gcrmn %>%
 plot_year <- ggplot(data_year, aes(x = Year)) +
   # By default its density, width*density*100 gives percentage
   geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
-                 color = col_color_graph, fill = col_fill_graph) +
+                 color = "black", fill = "#6c7a89") +
   lims(y = c(0, 10)) +
   labs(x = "Year", y = "Surveys (%)")
 
@@ -161,7 +161,7 @@ data_depth <- data_gcrmn %>%
 plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
   # By default its density, width*density*100 gives percentage
   geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
-                 color = col_color_graph, fill = col_fill_graph) +
+                 color = "black", fill = "#6c7a89") +
   lims(x = c(0, 40), y = c(0, 30)) +
   labs(x = "Depth (m)", y = "Surveys (%)")
 
