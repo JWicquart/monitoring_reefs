@@ -4,8 +4,10 @@ require(extrafont) # For fonts
 
 # 2. Set the default font family ----
 
-font_choose_graph <- "LM Sans 10"
-font_choose_map <- "LM Sans 10"
+windowsFonts("Open Sans" = windowsFont("Open Sans"))
+
+font_choose_graph <- "Open Sans"
+font_choose_map <- "Open Sans"
 
 # 3. Set the colors ----
 
