@@ -121,9 +121,9 @@ ggplot() +
   theme_map() +
   labs(col = "Monitoring duration (years)")
 
-# 2. Save the map ----
+# 4. Save the map ----
 
-ggsave("../figs/01_figure-1.png", height = 6, width = 10)
+ggsave("../figs/01_figure-1.png")
 
 ```
 
@@ -186,11 +186,11 @@ plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)
 
 # 4. Make the assembled plot ----
 
-plot_grid(plot_year, plot_depth, plot_duration, nrow = 1, labels = c("A", "B", "C"))
+plot_grid(plot_duration, plot_year, plot_depth, nrow = 1, labels = c("A", "B", "C"))
 
 # 5. Save the plot ----
 
-ggsave(filename = "../figs/01_figure-2.png", height = 3, width = 10)
+ggsave(filename = "../figs/01_figure-2.png", height = 3.5, width = 12)
 
 # 6. Remove useless objects ----
 
