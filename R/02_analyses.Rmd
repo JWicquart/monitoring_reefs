@@ -48,11 +48,13 @@ theme_set(theme_graph())
 
 load(file = "../data/04_meow-with-coral-reefs.RData")
 
-# 4. Load 2020 GCRMN data ----
+# 4. Load 2020 GCRMN report synthetic dataset ----
 
 data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>% 
-  filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5"))) %>% 
-  drop_na(Latitude, Longitude) %>% 
+  # Remove data
+  filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5"))) %>% # XL Catlin Seaview
+  filter(Year > 1980 & Year <= 2018) %>% # Data before 1980 and after 2018   
+  drop_na(Latitude, Longitude) %>% # NA for Lat/Long
   # Add data sources
   left_join(., read.csv2("../data/05_data-sources.csv"))
 
@@ -145,7 +147,7 @@ plot_year <- ggplot(data_year, aes(x = Year)) +
   # By default its density, width*density*100 gives percentage
   geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
                  color = "black", fill = "#6c7a89") +
-  lims(y = c(0, 10)) +
+  lims(y = c(0, 10), x = c(1979, 2021)) +
   labs(x = "Year", y = "Surveys (%)")
 
 # 2. Surveys by depth ----
@@ -162,7 +164,7 @@ plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
   # By default its density, width*density*100 gives percentage
   geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
                  color = "black", fill = "#6c7a89") +
-  lims(x = c(0, 40), y = c(0, 30)) +
+  #lims(x = c(0, 40), y = c(0, 30)) +
   labs(x = "Depth (m)", y = "Surveys (%)")
 
 # 3. Monitoring duration ----
@@ -205,7 +207,6 @@ rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
 # 1. Filter and transform the data ----
 
 data_method <- data_gcrmn %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
   select(Latitude, Longitude, Year, Method) %>% 
   distinct(.) %>% 
   mutate(Method = str_split_fixed(Method, ",", 6)[,1],
@@ -268,7 +269,6 @@ rm(data_method, data_method_label)
 # 1. Filter and transform the data ----
 
 data_source <- data_gcrmn %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
   select(Latitude, Longitude, Year, Source) %>% 
   distinct(.) %>%
   group_by(Source, Year) %>% 
@@ -495,6 +495,19 @@ png("./../figs/03_hcpc-map.png", width = 1600, height = 1600, res = 300)
 plot.HCPC(res_hcpc, choice = "map")
 dev.off()
 
+# 3. Results ----
+
+# 3.1 Print the contributions of variables to each cluster --
+
+res_hcpc$desc.var
+
+# 3.2 Export the results --
+
+write.csv2(res_hcpc$desc.var$quanti.var, "./../figs/02_table-results-hcpc_link.csv")
+write.csv2(res_hcpc$desc.var$quanti$`1`, "./../figs/02_table-results-hcpc_clust1.csv")
+write.csv2(res_hcpc$desc.var$quanti$`2`, "./../figs/02_table-results-hcpc_clust2.csv")
+write.csv2(res_hcpc$desc.var$quanti$`3`, "./../figs/02_table-results-hcpc_clust3.csv")
+
 ```
 
 ### Graphical output
@@ -512,7 +525,7 @@ data_var <- as_tibble(res_pca$var$coord) %>%
 # 1.2 Make the graph --
 
 plot_var <- ggplot(data = data_var) +
-  geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var)) +
+  geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var), family = font_choose_graph) +
   geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
                   arrow = arrow(length = unit(0.25, "cm"))) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -579,7 +592,7 @@ ggsave(filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, widt
 
 # 2.3 With clusters colors --
 
-ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clust)) +
+plot_ind <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clust)) +
   geom_point(show.legend = FALSE, size = 4, shape = 21, col = "black") +
   geom_text_repel(show.legend = FALSE, size = 3, seed = 20, max.overlaps = 5, family = font_choose_graph) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -588,7 +601,13 @@ ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clu
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
   scale_fill_manual(values = palette_cluster)
 
-ggsave(filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6)
+ggsave(plot_ind, filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6)
+
+# 2.4 Assembled and save the plots --
+
+plot_grid(plot_var, plot_ind, labels = c("A", "B"))
+
+ggsave(filename = "./../figs/02_pca-graph-combined.png", height = 5, width = 10)
 
 # 3. Map with all clusters ----
 
@@ -644,7 +663,7 @@ for(i in 1:4){
 
 # 5. Remove useless objects ----
 
-rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster)
+rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind)
 
 ```
 
@@ -1130,7 +1149,9 @@ ggsave(map_area, file = "../figs/03_map-descriptor-reef-area.png", height = 6, w
 hist(data_descriptors$area_rel)
 
 data_descriptors_maps <- data_descriptors %>% 
-  mutate(percent_n_cut = cut(n_percent, breaks = c(0, 25, 50, 75, 100), include.lowest = TRUE))
+  mutate(percent_n_cut = cut(n_percent, breaks = c(0, 25, 50, 75, 100), include.lowest = TRUE),
+         percent_n_cut = ifelse(n_percent == 0, "No data", as.character(percent_n_cut)),
+         percent_n_cut = factor(percent_n_cut, levels = c("No data", "[0,25]", "(25,50]", "(50,75]", "(75,100]")))
 
 # 2. Make the map ----
 
@@ -1273,10 +1294,8 @@ ggsave(map_surveys, file = "../figs/03_map-descriptor-surveys.png", height = 6, 
 # 1. Create bins ----
 
 data_descriptors_maps <- data_gcrmn_meow %>% 
-  filter(Year > 1980 & Year <= 2018) %>%   
   select(Latitude, Longitude, Year, Method, ECOREGION) %>% 
   distinct(.) %>% 
-  left_join(data_meowreefs, .) %>% 
   mutate(Method = str_split_fixed(Method, ",", 6)[,1],
          Method = str_to_lower(Method),
          Method = str_trim(Method, side = "both"),
@@ -1296,8 +1315,10 @@ data_descriptors_maps <- data_gcrmn_meow %>%
                                           "vis est.") ~ "Visual census",
                             Method == "video-transect" ~ "Video transect",
                             TRUE ~ "Unknown")) %>%
-  mutate(Method = as.factor(Method),
-         Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
+  left_join(data_meowreefs, .) %>% 
+  mutate(Method = replace_na(Method, "No data"),
+         Method = as.factor(Method),
+         Method = fct_relevel(Method, c("No data", "Unknown", "Photo-quadrat", "Video transect", "PIT", "LIT", "Visual census"))) %>% 
   group_by(Method, ECOREGION) %>% 
   count(name = "Abs") %>% 
   ungroup() %>% 
@@ -1334,7 +1355,8 @@ ggsave(map_methods, file = "../figs/03_map-descriptor-methods.png", height = 6, 
 
 # 1. Make the map ----
 
-plot_grid(map_area, map_methods, map_pixel, map_surveys, map_first, map_years, map_methods, nrow = 3, ncol = 2)
+plot_grid(map_area, map_methods, map_pixel, map_surveys, map_first, map_years, map_methods, 
+          nrow = 3, ncol = 2, labels = c("A", "B", "C", "D", "E", "F"))
 
 # 2. Save the map ----
 
