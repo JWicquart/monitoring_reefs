@@ -55,6 +55,10 @@ data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>
   filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5"))) %>% # XL Catlin Seaview
   filter(Year > 1980 & Year <= 2018) %>% # Data before 1980 and after 2018   
   drop_na(Latitude, Longitude) %>% # NA for Lat/Long
+  # Sites with incorrect position (not corrected during QAQC)
+  filter(!(Longitude %in% c(33.50138889, 52.7500, 50.71666667))) %>% 
+  filter(!(Site %in% c("34.26.62E.28.51.79S", "34.41.08E.27.31.66S", "NSIslandsSouth", 
+                       "29N34E4", "34.4.4.97E.29.7.39.89N", "34.26.013E.28.26.151N", "34.18.5E27.54.8N"))) %>% 
   # Add data sources
   left_join(., read.csv2("../data/05_data-sources.csv"))
 
@@ -125,7 +129,7 @@ ggplot() +
 
 # 4. Save the map ----
 
-ggsave("../figs/01_figure-1.png")
+ggsave("../figs/01_figure-1.png", dpi = 600)
 
 ```
 
@@ -192,7 +196,7 @@ plot_grid(plot_duration, plot_year, plot_depth, nrow = 1, labels = c("A", "B", "
 
 # 5. Save the plot ----
 
-ggsave(filename = "../figs/01_figure-2.png", height = 3.5, width = 12)
+ggsave(filename = "../figs/01_figure-2.png", height = 3.5, width = 12, dpi = 600)
 
 # 6. Remove useless objects ----
 
@@ -254,7 +258,7 @@ ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/01_figure-3.png", height = 4, width = 8)
+ggsave(filename = "../figs/01_figure-3.png", height = 4, width = 8, dpi = 600)
 
 # 5. Remove useless objects ----
 
@@ -295,7 +299,7 @@ ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/01_figure-4.png", height = 4, width = 8)
+ggsave(filename = "../figs/01_figure-4.png", height = 4, width = 8, dpi = 600)
 
 ```
 
@@ -458,7 +462,7 @@ ggplot() +
 
 # 8.2 Save the map --
 
-ggsave(filename = "../figs/03_map-size-pixel.png", height = 6, width = 8)
+ggsave(filename = "../figs/03_map-size-pixel.png", height = 6, width = 8, dpi = 600)
 
 # 9. Remove useless objects ----
 
@@ -537,7 +541,7 @@ plot_var <- ggplot(data = data_var) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
 
-ggsave(plot_var, filename = "./../figs/03_pca-graph-var.png", height = 6, width = 6)
+ggsave(plot_var, filename = "./../figs/03_pca-graph-var.png", height = 6, width = 6, dpi = 600)
 
 # 2. Graph of individuals ----
 
@@ -588,7 +592,7 @@ ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
 
-ggsave(filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, width = 6)
+ggsave(filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, width = 6, dpi = 600)
 
 # 2.3 With clusters colors --
 
@@ -601,13 +605,13 @@ plot_ind <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
   scale_fill_manual(values = palette_cluster)
 
-ggsave(plot_ind, filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6)
+ggsave(plot_ind, filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6, dpi = 600)
 
 # 2.4 Assembled and save the plots --
 
 plot_grid(plot_var, plot_ind, labels = c("A", "B"))
 
-ggsave(filename = "./../figs/02_pca-graph-combined.png", height = 5, width = 10)
+ggsave(filename = "./../figs/02_pca-graph-combined.png", height = 5, width = 10, dpi = 600)
 
 # 3. Map with all clusters ----
 
@@ -630,7 +634,7 @@ ggplot() +
 
 # 3.2 Save the map --
 
-ggsave(filename = "./../figs/01_figure-5.png", height = 5, width = 12)
+ggsave(filename = "./../figs/01_figure-5.png", height = 5, width = 12, dpi = 600)
 
 # 4. Map by cluster ----
 
@@ -657,7 +661,7 @@ for(i in 1:4){
 
   # 4.2 Save the map --
 
-  ggsave(filename = paste0("./../figs/03_map-cluster-", i,".png"), height = 5, width = 12)
+  ggsave(filename = paste0("./../figs/03_map-cluster-", i,".png"), height = 5, width = 12, dpi = 600)
 
 }
 
@@ -1136,7 +1140,7 @@ map_area <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_area, file = "../figs/03_map-descriptor-reef-area.png", height = 6, width = 10)
+ggsave(map_area, file = "../figs/03_map-descriptor-reef-area.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1171,7 +1175,7 @@ map_pixel <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_pixel, file = "../figs/03_map-descriptor-pixel.png", height = 6, width = 10)
+ggsave(map_pixel, file = "../figs/03_map-descriptor-pixel.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1209,7 +1213,7 @@ map_first <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_first, file = "../figs/03_map-descriptor-first-year.png", height = 6, width = 10)
+ggsave(map_first, file = "../figs/03_map-descriptor-first-year.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1246,7 +1250,7 @@ map_years <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_years, file = "../figs/03_map-descriptor-years.png", height = 6, width = 10)
+ggsave(map_years, file = "../figs/03_map-descriptor-years.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1283,7 +1287,7 @@ map_surveys <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_surveys, file = "../figs/03_map-descriptor-surveys.png", height = 6, width = 10)
+ggsave(map_surveys, file = "../figs/03_map-descriptor-surveys.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1345,7 +1349,7 @@ map_methods <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_methods, file = "../figs/03_map-descriptor-methods.png", height = 6, width = 10)
+ggsave(map_methods, file = "../figs/03_map-descriptor-methods.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1443,7 +1447,7 @@ plot_grid(plot_area, plot_surveys, plot_years, plot_pixel, nrow = 1, rel_widths 
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/03_lollipop-ecoregions-data-descriptors.png", height = 15, width = 14)
+ggsave(filename = "../figs/03_lollipop-ecoregions-data-descriptors.png", height = 15, width = 14, dpi = 600)
 
 # 5. Remove useless objects ----
 
