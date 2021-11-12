@@ -53,7 +53,7 @@ load(file = "../data/04_meow-with-coral-reefs.RData")
 data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>% 
   # Remove data
   filter(!(DatasetID %in% c("XLCA1", "XLCA2", "XLCA3", "XLCA4", "XLCA5"))) %>% # XL Catlin Seaview
-  filter(Year > 1980 & Year <= 2018) %>% # Data before 1980 and after 2018   
+  filter(Year <= 2018) %>% # Data after 2018   
   drop_na(Latitude, Longitude) %>% # NA for Lat/Long
   # Sites with incorrect position (not corrected during QAQC)
   filter(!(Longitude %in% c(33.50138889, 52.7500, 50.71666667))) %>% 
@@ -1386,6 +1386,8 @@ data_descriptors %>%
 
 # Additional figures
 
+## Lollipop plot
+
 ```{r fig.height=15, fig.width=10}
 
 # 1. Transform the data ----
@@ -1452,6 +1454,31 @@ ggsave(filename = "../figs/03_lollipop-ecoregions-data-descriptors.png", height 
 # 5. Remove useless objects ----
 
 rm(plot_area, plot_surveys, plot_years, plot_pixel)
+
+```
+
+## Datasets by year
+
+```{r}
+
+# 1. Transform the data ----
+
+data_datasets <- data_gcrmn %>% 
+  select(DatasetID, Year) %>% 
+  distinct() %>% 
+  group_by(Year) %>% 
+  count()
+
+# 2. Make the plot ----
+
+ggplot(data = data_datasets, aes(x = Year, y = n)) +
+  geom_bar(stat = "identity") +
+  theme_graph() +
+  labs(y = "Number of datasets")
+
+# 3. Save the plot ----
+
+ggsave(filename = "../figs/03_number-datasets-by-year.png", dpi = 600, width = 6, height = 4)
 
 ```
 
