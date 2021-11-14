@@ -168,7 +168,7 @@ plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
   # By default its density, width*density*100 gives percentage
   geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
                  color = "black", fill = "#6c7a89") +
-  #lims(x = c(0, 40), y = c(0, 30)) +
+  lims(x = c(0, 40), y = c(0, 30)) +
   labs(x = "Depth (m)", y = "Surveys (%)")
 
 # 3. Monitoring duration ----
@@ -626,7 +626,7 @@ ggplot() +
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
   theme_map() +
-  theme(legend.position = "right", 
+  theme(legend.position = "top", 
         legend.direction = "vertical",
         legend.title = element_text(face = "bold"),
         legend.text = element_markdown()) +
@@ -634,7 +634,7 @@ ggplot() +
 
 # 3.2 Save the map --
 
-ggsave(filename = "./../figs/01_figure-5.png", height = 5, width = 12, dpi = 600)
+ggsave(filename = "./../figs/01_figure-5.png", height = 7, width = 10, dpi = 600)
 
 # 4. Map by cluster ----
 
@@ -653,7 +653,7 @@ for(i in 1:4){
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
   guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
   theme_map() +
-  theme(legend.position = "right", 
+  theme(legend.position = "top", 
         legend.direction = "vertical",
         legend.title = element_text(face = "bold"),
         legend.text = element_markdown()) +
@@ -661,7 +661,7 @@ for(i in 1:4){
 
   # 4.2 Save the map --
 
-  ggsave(filename = paste0("./../figs/03_map-cluster-", i,".png"), height = 5, width = 12, dpi = 600)
+  ggsave(filename = paste0("./../figs/03_map-cluster-", i,".png"), height = 7, width = 10, dpi = 600)
 
 }
 
