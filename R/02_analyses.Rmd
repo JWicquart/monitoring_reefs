@@ -168,7 +168,7 @@ plot_depth <- ggplot(data = data_depth, aes(x = Depth)) +
   # By default its density, width*density*100 gives percentage
   geom_histogram(binwidth = 1, aes(y = stat(width*density*100)),
                  color = "black", fill = "#6c7a89") +
-  lims(x = c(0, 40), y = c(0, 30)) +
+  lims(x = c(-1, 40), y = c(0, 30)) +
   labs(x = "Depth (m)", y = "Surveys (%)")
 
 # 3. Monitoring duration ----
