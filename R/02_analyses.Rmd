@@ -202,6 +202,30 @@ ggsave(filename = "../figs/01_figure-2.png", height = 3.5, width = 12, dpi = 600
 
 rm(data_depth, plot_depth, data_year, plot_year, data_duration, plot_duration)
 
+# 7. Export tables to include numbers in the manuscript ----
+
+# 7.1 Number of sites by time category --
+
+data_gcrmn_sites %>% 
+  st_drop_geometry() %>% 
+  select(interval_class) %>% 
+  group_by(interval_class) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(percent = (n/sum(n))*100) %>% 
+  write.csv2(., file = "../figs/03_number-sites-by-category.csv", row.names = FALSE)
+
+# 7.2 Number of surveys by year --
+
+data_gcrmn %>% 
+  select(Latitude, Longitude, Year) %>% 
+  distinct(.) %>% 
+  group_by(Year) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(percent = (n/sum(n))*100) %>% 
+  write.csv2(., file = "../figs/03_number-surveys-by-year.csv", row.names = FALSE)
+
 ```
 
 ## Figure 3
@@ -243,16 +267,20 @@ data_method <- data_gcrmn %>%
 # 2. Define label positions ----
 
 data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
-                            x = c(1995, 2012, 2003, 1989, 2001, 1990),
-                            y = c(0.94, 0.75, 0.5, 0.65, 0.22, 0.22))
+                            x = c(1997, 2012, 2003, 1989, 2001, 1988),
+                            y = c(0.95, 0.75, 0.5, 0.65, 0.22, 0.20),
+                            group = c(1, 2, 2, 2, 2, 1)) # Group 1 = text white, group 2 = text black
 
 # 3. Make the plot ----
 
 ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)) +
   geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.9) +
-  geom_text(data = data_method_label, aes(x = x, y = y, label = Method), family = font_choose_graph) +
+  geom_text(data = data_method_label %>% filter(group == 2), 
+            aes(x = x, y = y, label = Method), family = font_choose_graph) +
+  geom_text(data = data_method_label %>% filter(group == 1), 
+            aes(x = x, y = y, label = Method), col = "white", family = font_choose_graph) +
   scale_fill_brewer(palette = "RdYlBu") +
-  lims(x = c(1980, 2020)) +
+  lims(x = c(1979, 2020)) +
   labs(y = "Percentage of surveys", x = "Year") +
   scale_y_continuous(labels = scales::percent)
 
@@ -260,7 +288,11 @@ ggplot(data = data_method, aes(x = Year, y = Rel, fill = Method, label = Method)
 
 ggsave(filename = "../figs/01_figure-3.png", height = 4, width = 8, dpi = 600)
 
-# 5. Remove useless objects ----
+# 5. Export tables to include numbers in the manuscript ----
+
+write.csv2(data_method, file = "../figs/03_methods-by-year.csv", row.names = FALSE)
+
+# 6. Remove useless objects ----
 
 rm(data_method, data_method_label)
 
