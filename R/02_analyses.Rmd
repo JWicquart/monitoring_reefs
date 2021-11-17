@@ -541,10 +541,10 @@ res_hcpc$desc.var
 
 write.table(res_hcpc$call$t$inert.gain, "./../figs/02_table-results-hcpc_inertia-gain.txt")
 write.csv2(res_hcpc$desc.var$quanti.var, "./../figs/02_table-results-hcpc_link.csv")
-write.csv2(res_hcpc$desc.var$quanti$`1`, "./../figs/02_table-results-hcpc_clust1.csv")
-write.csv2(res_hcpc$desc.var$quanti$`2`, "./../figs/02_table-results-hcpc_clust2.csv")
-write.csv2(res_hcpc$desc.var$quanti$`3`, "./../figs/02_table-results-hcpc_clust3.csv")
-write.csv2(res_hcpc$desc.var$quanti$`4`, "./../figs/02_table-results-hcpc_clust3.csv")
+write.csv2(res_hcpc$desc.var$quanti$`1`, "./../figs/02_table-results-hcpc_clust4.csv")
+write.csv2(res_hcpc$desc.var$quanti$`2`, "./../figs/02_table-results-hcpc_clust3.csv")
+write.csv2(res_hcpc$desc.var$quanti$`3`, "./../figs/02_table-results-hcpc_clust2.csv")
+write.csv2(res_hcpc$desc.var$quanti$`4`, "./../figs/02_table-results-hcpc_clust1.csv")
 
 ```
 
@@ -558,7 +558,11 @@ write.csv2(res_hcpc$desc.var$quanti$`4`, "./../figs/02_table-results-hcpc_clust3
 
 data_var <- as_tibble(res_pca$var$coord) %>% 
   bind_cols(var = rownames(res_pca$var$coord), .) %>% 
-  select(var, Dim.1, Dim.2)
+  select(var, Dim.1, Dim.2) %>% 
+  # Rename variables to make interpretation easier
+  mutate(var = str_remove_all(var, "_abs"),
+         var = str_replace_all(var, c("n_15" = "n_ltms",
+                                      "n_percent" = "pixel_data")))
 
 # 1.2 Make the graph --
 
@@ -613,16 +617,22 @@ legend_cluster <- data_ind %>%
   group_by(clust) %>% 
   count()
 
-# Legend labels for each cluster
-legend_cluster <- c("1" = glue("<b>1.</b> Very high spatio-temporal coverage (<i>n</i> = 2)"),
+# Legend labels for each cluster (map)
+legend_cluster <- c("1" = glue("<b>1.</b> Very high temporal, high spatial coverage (<i>n</i> = 2)"),
                     "2" = glue("<b>2.</b> High spatio-temporal coverage (<i>n</i> = 16)"),
-                    "3" = glue("<b>3.</b> Medium spatio-temporal coverage (<i>n</i> = 42)"),
+                    "3" = glue("<b>3.</b> High spatial, medium temporal coverage (<i>n</i> = 42)"),
                     "4" = glue("<b>4.</b> Low spatio-temporal coverage (<i>n</i> = 34)"),
                     "5" = glue("<b>5.</b> No data (<i>n</i> = 13)"))
 
+# Legend labels for each cluster (plot)
+annotation_cluster <- tibble(cluster = as.character(c(1:4)),
+                             x = c(6, 5.5, 1.5, -1.5),
+                             y = c(4.5, -1, 2, -2),
+                             col_cluster = c("white", "black", "black", "black"))
+
 # 2.2 Make the graph without clusters colors --
 
-ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
+plot_ind <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
   geom_point(size = 4) +
   geom_text_repel(show.legend = FALSE, size = 3, seed = 20, max.overlaps = 5, family = font_choose_graph) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -630,26 +640,33 @@ ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X)) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
 
-ggsave(filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, width = 6, dpi = 600)
+ggsave(plot_ind, filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, width = 6, dpi = 600)
+
+plot_grid(plot_var, plot_ind, labels = c("A", "B"))
+
+ggsave(filename = "./../figs/03_pca-graph-combined-without-col.png", height = 5, width = 10, dpi = 600)
 
 # 2.3 With clusters colors --
 
-plot_ind <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clust)) +
+plot_ind_col <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clust)) +
   geom_point(show.legend = FALSE, size = 4, shape = 21, col = "black") +
   geom_text_repel(show.legend = FALSE, size = 3, seed = 20, max.overlaps = 5, family = font_choose_graph) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
-  scale_fill_manual(values = palette_cluster)
+  geom_label(data = annotation_cluster, aes(x = x, y = y, label = paste("Cluster", cluster), 
+                                            fill = cluster, color = col_cluster), 
+             label.r = unit(0, "lines"), label.size = 0, show.legend = FALSE, alpha = 0.75, family = font_choose_graph) +
+  scale_fill_manual(values = palette_cluster) +
+  scale_color_identity()
 
-ggsave(plot_ind, filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6, dpi = 600)
 
-# 2.4 Assembled and save the plots --
+ggsave(plot_ind_col, filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6, dpi = 600)
 
-plot_grid(plot_var, plot_ind, labels = c("A", "B"))
+plot_grid(plot_var, plot_ind_col, labels = c("A", "B"))
 
-ggsave(filename = "./../figs/02_pca-graph-combined.png", height = 5, width = 10, dpi = 600)
+ggsave(filename = "./../figs/01_figure-5.png", height = 5, width = 10, dpi = 600)
 
 # 3. Map with all clusters ----
 
@@ -672,7 +689,7 @@ ggplot() +
 
 # 3.2 Save the map --
 
-ggsave(filename = "./../figs/01_figure-5.png", height = 7, width = 10, dpi = 600)
+ggsave(filename = "./../figs/01_figure-6.png", height = 7, width = 10, dpi = 600)
 
 # 4. Map by cluster ----
 
@@ -705,7 +722,7 @@ for(i in 1:5){
 
 # 5. Remove useless objects ----
 
-rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind)
+rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind, plot_ind_col)
 
 ```
 
