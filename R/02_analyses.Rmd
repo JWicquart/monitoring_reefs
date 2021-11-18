@@ -60,7 +60,8 @@ data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>
   filter(!(Site %in% c("34.26.62E.28.51.79S", "34.41.08E.27.31.66S", "NSIslandsSouth", 
                        "29N34E4", "34.4.4.97E.29.7.39.89N", "34.26.013E.28.26.151N", "34.18.5E27.54.8N"))) %>% 
   # Add data sources
-  left_join(., read.csv2("../data/05_data-sources.csv"))
+  left_join(., read.csv2("../data/05_data-sources.csv")) %>% 
+  mutate(Source = str_to_sentence(Source))
 
 # 5. Remove sites falling outside MEOW containing coral reefs ----
 
@@ -316,14 +317,22 @@ data_source <- data_gcrmn %>%
 
 # 2. Define label positions ----
 
-#data_source_label <- tibble(Source = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
-#                            x = c(1995, 2012, 2003, 1989, 2001, 1990),
-#                            y = c(0.94, 0.75, 0.5, 0.65, 0.22, 0.22))
+data_source_label <- tibble(Source = c("Government", "NGO", "Non-tourism private sector", 
+                                       "Research institute and university", "Tourism", "Unknown"),
+                            x = c(2011, 2003, 2009, 2009, 2015, 1988),
+                            y = c(0.9, 0.6, 0.4, 0.22, 0.06, 0.5),
+                            group = c(1, 2, 2, 2, 1, 1)) # Group 1 = text white, group 2 = text black
 
 # 3. Make the plot ----
 
 ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)) +
-  geom_stream(type = "proportional", show.legend = TRUE, alpha = 0.9) +
+  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.9) +
+  geom_text(data = data_source_label %>% filter(group == 2), 
+            aes(x = x, y = y, label = Source), family = font_choose_graph) +
+  geom_text(data = data_source_label %>% filter(group == 1), 
+            aes(x = x, y = y, label = Source), col = "white", family = font_choose_graph) +
+  annotate("segment", x = 2015, xend = 2017, y = 0.1, yend = 0.17, col = "white") +
+  annotate("segment", x = 2010, xend = 2010, y = 0.31, yend = 0.36, col = "black") +
   scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
   labs(y = "Percentage of surveys", x = "Year") +
@@ -332,6 +341,10 @@ ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)
 # 4. Save the plot ----
 
 ggsave(filename = "../figs/01_figure-4.png", height = 4, width = 8, dpi = 600)
+
+# 5. Remove useless objects ----
+
+rm(data_method_label, data_source_label)
 
 ```
 
