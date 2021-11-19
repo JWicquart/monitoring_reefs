@@ -61,7 +61,8 @@ data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>
                        "29N34E4", "34.4.4.97E.29.7.39.89N", "34.26.013E.28.26.151N", "34.18.5E27.54.8N"))) %>% 
   # Add data sources
   left_join(., read.csv2("../data/05_data-sources.csv")) %>% 
-  mutate(Source = str_to_sentence(Source))
+  mutate(Source = str_replace_all(Source, c("Research Institute and University" = "Research institute and university")),
+         Source = as.factor(Source))
 
 # 5. Remove sites falling outside MEOW containing coral reefs ----
 
@@ -313,15 +314,17 @@ data_source <- data_gcrmn %>%
   ungroup() %>% 
   complete(Source, fill = list(Abs = 0)) %>% 
   group_by(Year) %>% 
-  mutate(Rel = (Abs/sum(Abs))*100)
+  mutate(Rel = (Abs/sum(Abs))*100,
+         Source = fct_relevel(Source, c("Unknown", "Government", "Non-tourism private sector", "NGO", 
+                                       "Tourism", "Research institute and university")))
 
 # 2. Define label positions ----
 
-data_source_label <- tibble(Source = c("Government", "NGO", "Non-tourism private sector", 
-                                       "Research institute and university", "Tourism", "Unknown"),
-                            x = c(2011, 2003, 2009, 2009, 2015, 1988),
-                            y = c(0.9, 0.6, 0.4, 0.22, 0.06, 0.5),
-                            group = c(1, 2, 2, 2, 1, 1)) # Group 1 = text white, group 2 = text black
+data_source_label <- tibble(Source = c("Unknown", "Government", "Non-tourism private sector", "NGO", 
+                                       "Tourism", "Research institute and university"),
+                            x = c(1989, 2013, 2006, 2003, 2012.5, 2005),
+                            y = c(0.85, 0.7, 0.45, 0.3, 0.21, 0.075),
+                            group = c(1, 2, 2, 2, 2, 1)) # Group 1 = text white, group 2 = text black
 
 # 3. Make the plot ----
 
@@ -331,12 +334,12 @@ ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)
             aes(x = x, y = y, label = Source), family = font_choose_graph) +
   geom_text(data = data_source_label %>% filter(group == 1), 
             aes(x = x, y = y, label = Source), col = "white", family = font_choose_graph) +
-  annotate("segment", x = 2015, xend = 2017, y = 0.1, yend = 0.17, col = "white") +
-  annotate("segment", x = 2010, xend = 2010, y = 0.31, yend = 0.36, col = "black") +
   scale_fill_brewer(palette = "RdYlBu") +
   lims(x = c(1980, 2020)) +
   labs(y = "Percentage of surveys", x = "Year") +
-  scale_y_continuous(labels = scales::percent)
+  scale_y_continuous(labels = scales::percent) +
+  annotate("segment", x = 2009, xend = 2010, y = 0.48, yend = 0.53, col = "black") +
+  annotate("segment", x = 2017, xend = 2015, y = 0.16, yend = 0.185, col = "black")
 
 # 4. Save the plot ----
 
@@ -364,7 +367,6 @@ data_meow <- read_sf("../data/02_marine-ecoregions-of-the-world/Marine_Ecoregion
 # 2. Join MEOW and GCRMN data ----
 
 data_gcrmn_meow <- data_gcrmn %>% 
-  drop_na(Latitude, Longitude) %>% 
   st_as_sf(., coords = c("Longitude", "Latitude"), crs = 4326) %>% 
   st_intersection(., data_meow) %>% 
   mutate(geometry2 = str_remove_all(geometry, "c|\\(|\\)"),
@@ -1178,7 +1180,7 @@ ggsave("../figs/03_regional-map-pacific.png", dpi = 600, width = 4, height = 5)
 
 ## Maps of descriptors
 
-### Reef area
+### Reef area by ecoregion
 
 ```{r}
 
@@ -1191,7 +1193,7 @@ data_descriptors_maps <- data_descriptors %>%
 
 # 2. Make the map ----
 
-map_area <- ggplot() +
+ggplot() +
   # Background map border
   geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
   # MEOW
@@ -1208,7 +1210,48 @@ map_area <- ggplot() +
 
 # 3. Save the map ----
 
-ggsave(map_area, file = "../figs/03_map-descriptor-reef-area.png", height = 6, width = 10, dpi = 600)
+ggsave(file = "../figs/03_map-descriptor-reef-area.png", height = 6, width = 10, dpi = 600)
+
+```
+
+### Main data source
+
+```{r}
+
+# 1. Create bins ----
+
+data_source <- data_gcrmn_meow %>% 
+  select(Latitude, Longitude, Year, Source, ECOREGION) %>% 
+  distinct(.) %>% 
+  group_by(Source, ECOREGION) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  group_by(ECOREGION) %>% 
+  filter(Abs == max(Abs)) %>% 
+  select(-Abs) %>% 
+  left_join(data_meowreefs, .) %>% 
+  select(ECOREGION, Source) %>% 
+  mutate(Source = replace_na(Source, "Unknown"))
+
+# 2. Make the map ----
+
+map_source <- ggplot() +
+  # Background map border
+  geom_sf(data = background_map_border, fill = "#56B4E950", color = "grey30", size = 0.5/.pt) +
+  # MEOW
+  geom_sf(data = data_source, aes(fill = Source)) +
+  # Background map
+  geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  guides(fill = guide_legend(title.position = "top",
+                             title.hjust = 0.5, nrow = 2,
+                             title = "Main data sources")) +
+  labs(title = "DATA SOURCES") + 
+  theme_map2()
+
+# 3. Save the map ----
+
+ggsave(map_source, file = "../figs/03_map-descriptor-source.png", height = 6, width = 10, dpi = 600)
 
 ```
 
@@ -1390,7 +1433,8 @@ data_descriptors_maps <- data_gcrmn_meow %>%
   left_join(data_meowreefs, .) %>% 
   mutate(Method = replace_na(Method, "No data"),
          Method = as.factor(Method),
-         Method = fct_relevel(Method, c("No data", "Unknown", "Photo-quadrat", "Video transect", "PIT", "LIT", "Visual census"))) %>% 
+         Method = fct_relevel(Method, c("No data", "Unknown", "Photo-quadrat", "Video transect", 
+                                        "PIT", "LIT", "Visual census"))) %>% 
   group_by(Method, ECOREGION) %>% 
   count(name = "Abs") %>% 
   ungroup() %>% 
@@ -1427,7 +1471,7 @@ ggsave(map_methods, file = "../figs/03_map-descriptor-methods.png", height = 6, 
 
 # 1. Make the map ----
 
-plot_grid(map_area, map_methods, map_pixel, map_surveys, map_first, map_years, map_methods, 
+plot_grid(map_methods, map_source, map_pixel, map_surveys, map_first, map_years, map_methods, 
           nrow = 3, ncol = 2, labels = c("A", "B", "C", "D", "E", "F"))
 
 # 2. Save the map ----
