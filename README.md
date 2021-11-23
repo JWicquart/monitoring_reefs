@@ -1,9 +1,9 @@
 # **Trends in coral reefs benthic monitoring over the last four decades**
 
 
-This repository contains code associated to the article:
+**This repository contains code associated to the article:**
 
-Wicquart, J., [...] Planes, S. (2022). Trends in coral reefs benthic monitoring over the last four decades. *Frontiers in Marine Science*, _in prep_.
+Wicquart, J., [...] Planes, S. (2022). Coral reefs benthic monitoring: evolution, potential gaps and recommendations. _in prep_.
 
 
 ## 1. How to download this project?
@@ -12,10 +12,20 @@ On the project main page on GitHub, click on the green button `Code` and then cl
 
 ## 2. Context
 
+*[To be completed]*
 
 ## 3. Description of the project
 
 ### 3.1 Project organization
+
+* :open_file_folder: `R`
+  + :open_file_folder: `functions`
+        - `graphical_par.R`
+        - `theme_graph.R`
+        - `theme_map.R`
+        - `theme_map2.R`
+  + `01_reefs-ecoregion.R`
+  + `02_analysis.Rmd`
 
 ### 3.2 Data description
 
