@@ -737,7 +737,7 @@ for(i in 1:5){
 
 # 5. Remove useless objects ----
 
-rm(data_var, data_ind, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind, plot_ind_col)
+rm(data_var, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind, plot_ind_col)
 
 ```
 
@@ -1245,8 +1245,8 @@ map_source <- ggplot() +
   scale_fill_brewer(palette = "RdYlBu") +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5, nrow = 2,
-                             title = "Main data sources")) +
-  labs(title = "DATA SOURCES") + 
+                             title = "Main data source")) +
+  labs(title = "DATA SOURCE") + 
   theme_map2()
 
 # 3. Save the map ----
@@ -1492,6 +1492,11 @@ data_descriptors %>%
   mutate(area_abs = round(area_abs*1e-6, 1),
          area_rel = round(area_rel, 3),
          n_percent = round(n_percent, 1)) %>%
+  # Join with data_ind to add the cluster of each ecoregion
+  left_join(., data_ind %>% 
+              st_drop_geometry() %>% 
+              select(ECO_CODE_X, clust) %>% 
+              rename(Code = ECO_CODE_X, Cluster = clust)) %>% 
   write.csv2(., file = "../figs/02_table-of-descriptors.csv", row.names = FALSE)
 
 ```
