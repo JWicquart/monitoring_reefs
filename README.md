@@ -1,4 +1,4 @@
-# **Trends in coral reefs benthic monitoring over the last four decades**
+# **Coral reefs benthic monitoring: evolution, potential gaps and recommendations**
 
 
 **This repository contains code associated to the article:**
@@ -19,13 +19,13 @@ On the project main page on GitHub, click on the green button `Code` and then cl
 ### 3.1 Project organization
 
 * :open_file_folder: `R`
-  + :open_file_folder: `functions`
-        - `graphical_par.R`
-        - `theme_graph.R`
-        - `theme_map.R`
-        - `theme_map2.R`
-  + `01_reefs-ecoregion.R`
-  + `02_analysis.Rmd`
+  + :open_file_folder: `functions` Functions used in the two main scripts
+    - `graphical_par.R` Graphical parameters
+    - `theme_graph.R` Theme for graphs
+    - `theme_map.R` Theme for maps (primary)
+    - `theme_map2.R` Theme for maps (secondary)
+  + `01_reefs-ecoregion.R` Filter ecoregions containing coral reefs
+  + `02_analysis.Rmd` Main analysis script
 
 ### 3.2 Data description
 
