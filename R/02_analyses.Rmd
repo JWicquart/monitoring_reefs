@@ -1534,7 +1534,6 @@ for(i in i_colnames){
     labs(x = plot_title %>% filter(raw == i) %>% select(title) %>% pull()) +
     guides(fill = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5)))
 
-  
   plot_list[[i]] <- plot_i 
 
 }
@@ -1547,7 +1546,7 @@ common_legend <- get_legend(plot_list[["n_sites_abs"]])
 
 # 3.2 Combine plots --
 
-plot_grid(legend, 
+plot_grid(common_legend, 
           plot_list[["n_sites_abs"]] + theme(legend.position = "none",
                                              plot.margin = unit(c(1,3,1,3), "lines")), 
           plot_list[["n_surveys_abs"]] + theme(legend.position = "none",
