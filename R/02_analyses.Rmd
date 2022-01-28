@@ -1214,7 +1214,7 @@ ggsave(file = "../figs/03_map-descriptor-reef-area.png", height = 6, width = 10,
 
 ```
 
-### Main data source
+### Main stakeholder
 
 ```{r}
 
@@ -1245,8 +1245,8 @@ map_source <- ggplot() +
   scale_fill_brewer(palette = "RdYlBu") +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5, nrow = 2,
-                             title = "Main data source")) +
-  labs(title = "DATA SOURCE") + 
+                             title = "Main stakeholder")) +
+  labs(title = "MAIN STAKEHOLDER") + 
   theme_map2()
 
 # 3. Save the map ----
@@ -1476,7 +1476,7 @@ plot_grid(map_methods, map_source, map_pixel, map_surveys, map_first, map_years,
 
 # 2. Save the map ----
 
-ggsave(file = "../figs/02_supplementary-2.png", height = 12, width = 10)
+ggsave(file = "../figs/02_supplementary-3.png", height = 12, width = 10)
 
 ```
 
@@ -1521,6 +1521,7 @@ for(i in i_colnames){
 
   plot_i <- ggplot(data = data_descriptors_clust, aes_string(x = i, y = "y", label = "ECO_CODE_X")) +
     geom_violin(fill = "lightgrey", alpha = 0.25, col = "darkgray") +
+    geom_vline(xintercept = mean(data_descriptors_clust %>% select(i) %>% pull(), na.rm = TRUE), color = "black") +
     geom_jitter(shape = 21, size = 4, aes(fill = clust), position = pos) +
     scale_fill_manual(values = palette_cluster, name = "Cluster") +
     geom_text_repel(show.legend = FALSE, size = 2.5, seed = 20, max.overlaps = 5, family = font_choose_graph, position = pos) +
@@ -1563,7 +1564,7 @@ plot_grid(legend,
 
 # 4. Save the plot ----
 
-ggsave(filename = "../figs/02_supplementary-3.png", dpi = 600, width = 8, height = 12)
+ggsave(filename = "../figs/02_supplementary-4.png", dpi = 600, width = 8, height = 12)
 
 ```
 
