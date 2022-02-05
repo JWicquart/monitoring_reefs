@@ -27,6 +27,7 @@ library(tidyverse) # Core tidyverse packages
 library(sf)
 sf_use_s2(FALSE) # Switch from S2 to GEOS
 library(ggstream)
+library(patchwork)
 library(cowplot)
 library(ggsflabel)
 library(ggtext)
@@ -144,7 +145,7 @@ ggsave("../figs/01_figure-1.png", dpi = 600)
 # 1.1 Modify the data --
 
 data_year <- data_gcrmn %>% 
-  select(Latitude, Longitude, Year) %>% 
+  select(Latitude, Longitude, Date, Year) %>% 
   distinct(.)
 
 # 1.2 Make the plot --
@@ -161,7 +162,7 @@ plot_year <- ggplot(data_year, aes(x = Year)) +
 # 2.1 Modify the data --
 
 data_depth <- data_gcrmn %>% 
-  select(Latitude, Longitude, Year, Depth) %>% 
+  select(Latitude, Longitude, Date, Year, Depth) %>% 
   distinct(.)
 
 # 2.2 Make the plot --
@@ -220,7 +221,7 @@ data_gcrmn_sites %>%
 # 7.2 Number of surveys by year --
 
 data_gcrmn %>% 
-  select(Latitude, Longitude, Year) %>% 
+  select(Latitude, Longitude, Date, Year) %>% 
   distinct(.) %>% 
   group_by(Year) %>% 
   count() %>% 
@@ -393,7 +394,7 @@ data_descriptors <- data_gcrmn_meow %>%
 # 5. Calculation of surveys ----
 
 data_descriptors <- data_gcrmn_meow %>% 
-  select(Latitude, Longitude, Year, ECOREGION) %>% 
+  select(Latitude, Longitude, Date, Year, ECOREGION) %>% 
   distinct() %>% 
   group_by(ECOREGION) %>% 
   summarise(n_surveys = n()) %>% 
@@ -592,7 +593,8 @@ plot_var <- ggplot(data = data_var) +
               aes(x0 = x0, y0 = y0, r = r)) +
   coord_fixed() +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
-       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"),
+       title = "A")
 
 ggsave(plot_var, filename = "./../figs/03_pca-graph-var.png", height = 6, width = 6, dpi = 600)
 
@@ -641,8 +643,8 @@ legend_cluster <- c("1" = glue("<b>1.</b> Very high temporal, high spatial cover
 
 # Legend labels for each cluster (plot)
 annotation_cluster <- tibble(cluster = as.character(c(1:4)),
-                             x = c(6, 5.5, 1.5, -1.5),
-                             y = c(4.5, -1, 2, -2),
+                             x = c(6.5, 5.5, -1.5, -1.5),
+                             y = c(2.5, -1, -2, 2),
                              col_cluster = c("white", "black", "black", "black"))
 
 # 2.2 Make the graph without clusters colors --
@@ -653,11 +655,12 @@ plot_ind <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
-       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"))
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"),
+       title = "B")
 
 ggsave(plot_ind, filename = "./../figs/03_pca-graph-ind-without-col.png", height = 6, width = 6, dpi = 600)
 
-plot_grid(plot_var, plot_ind, labels = c("A", "B"))
+plot_var + plot_ind
 
 ggsave(filename = "./../figs/03_pca-graph-combined-without-col.png", height = 5, width = 10, dpi = 600)
 
@@ -669,17 +672,17 @@ plot_ind_col <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CO
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_vline(xintercept = 0, linetype = "dashed") +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
-       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)")) +
+       y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"),
+       title = "B") +
   geom_label(data = annotation_cluster, aes(x = x, y = y, label = paste("Cluster", cluster), 
                                             fill = cluster, color = col_cluster), 
              label.r = unit(0, "lines"), label.size = 0, show.legend = FALSE, alpha = 0.75, family = font_choose_graph) +
   scale_fill_manual(values = palette_cluster) +
   scale_color_identity()
 
-
 ggsave(plot_ind_col, filename = "./../figs/03_pca-graph-ind-with-col.png", height = 6, width = 6, dpi = 600)
 
-plot_grid(plot_var, plot_ind_col, labels = c("A", "B"))
+plot_var + plot_ind_col
 
 ggsave(filename = "./../figs/01_figure-5.png", height = 5, width = 10, dpi = 600)
 
@@ -1683,6 +1686,38 @@ ggplot(data = data_datasets, aes(x = Year, y = n)) +
 # 3. Save the plot ----
 
 ggsave(filename = "../figs/03_number-datasets-by-year.png", dpi = 600, width = 6, height = 4)
+
+```
+
+## Datasets contribution
+
+```{r}
+
+# 1. Transform the data ----
+
+surveys_dataset <- data_gcrmn  %>% 
+  select(Latitude, Longitude, Year, Date, DatasetID) %>% 
+  distinct(.) %>% 
+  group_by(DatasetID) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(percent_surveys = (n/sum(n))*100) %>% 
+  arrange(desc(percent_surveys))
+
+# 2. Make the plot (only for first 20 datasets) ----
+
+ggplot(data = surveys_dataset %>% slice(1:20), aes(x = reorder(DatasetID, desc(percent_surveys)), y = percent_surveys)) +
+  geom_bar(stat = "identity", fill = col_color_map) +
+  labs(x = NULL, y = "Percentage of surveys") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust = 0.75))
+
+# 3. Save the plot ----
+
+ggsave(filename = "../figs/03_percentage-surveys-by-dataset.png", dpi = 600, width = 6, height = 4)
+
+# 4. Export the data ----
+
+write.csv2(surveys_dataset, file = "../figs/03_table-percentage-surveys-by-dataset.csv", row.names = FALSE)
 
 ```
 

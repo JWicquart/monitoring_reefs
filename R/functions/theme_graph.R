@@ -72,7 +72,7 @@ theme_graph <- function(base_size = 12, base_family = font_choose_graph, base_li
         strip.switch.pad.grid = unit(half_line/2, "pt"), 
         strip.switch.pad.wrap = unit(half_line/2, "pt"), 
         plot.background = element_rect(colour = "white"), 
-        plot.title = element_text(size = rel(1.2), hjust = 0, vjust = 1, margin = margin(b = half_line)), 
+        plot.title = element_text(size = rel(1.3), hjust = 0, vjust = 1, margin = margin(b = half_line), face = "bold"), 
         plot.subtitle = element_text(hjust = 0, vjust = 1, margin = margin(b = half_line)), 
         plot.caption = element_text(size = rel(0.8), hjust = 1, vjust = 1, margin = margin(t = half_line)), 
         plot.tag = element_text(size = rel(1.2), hjust = 0.5, vjust = 0.5), 
