@@ -637,7 +637,7 @@ legend_cluster <- data_ind %>%
 # Legend labels for each cluster (map)
 legend_cluster <- c("1" = glue("<b>1.</b> Very high spatio-temporal coverage (<i>n</i> = ", as.character(legend_cluster[1,"n"]),")"),
                     "2" = glue("<b>2.</b> High spatio-temporal coverage (<i>n</i> = ", as.character(legend_cluster[2,"n"]),")"),
-                    "3" = glue("<b>3.</b> High spatial, medium temporal coverage (<i>n</i> = ", as.character(legend_cluster[3,"n"]),")"),
+                    "3" = glue("<b>3.</b> Medium spatio-temporal coverage (<i>n</i> = ", as.character(legend_cluster[3,"n"]),")"),
                     "4" = glue("<b>4.</b> Low spatio-temporal coverage (<i>n</i> = ", as.character(legend_cluster[4,"n"]),")"),
                     "5" = glue("<b>5.</b> No data (<i>n</i> = ", as.character(legend_cluster[5,"n"]),")"))
 
