@@ -580,10 +580,16 @@ data_var <- as_tibble(res_pca$var$coord) %>%
          var = str_replace_all(var, c("n_15" = "n_ltms",
                                       "n_percent" = "pixel_data")))
 
+# Annotation labels for each descriptor (geom_text_repel plot above circle and segment)
+annotation_label <- tibble(descriptor = data_var$var,
+                           x = c(0.75, 0.625, -0.625, 0.4, 0.70, 0.275),
+                           y = c(0.08, 0.335, 0.27, 0.6, -0.35, -0.725))
+
 # 1.2 Make the graph --
 
 plot_var <- ggplot(data = data_var) +
-  geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var), family = font_choose_graph) +
+  #geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var), family = font_choose_graph) +
+  geom_text(data = annotation_label, aes(x = x, y = y, label = descriptor)) +
   geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
                   arrow = arrow(length = unit(0.25, "cm"))) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -595,6 +601,8 @@ plot_var <- ggplot(data = data_var) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"),
        title = "A")
+
+plot_var
 
 ggsave(plot_var, filename = "./../figs/03_pca-graph-var.png", height = 6, width = 6, dpi = 600)
 
@@ -740,7 +748,7 @@ for(i in 1:5){
 
 # 5. Remove useless objects ----
 
-rm(data_var, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind, plot_ind_col)
+rm(data_var, data_hcpc_descriptors, data_hcpc_cluster, i, legend_cluster, plot_var, plot_ind, plot_ind_col, annotation_label)
 
 ```
 
