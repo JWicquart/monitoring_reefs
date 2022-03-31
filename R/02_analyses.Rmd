@@ -238,6 +238,8 @@ data_gcrmn %>%
 # 1. Filter and transform the data ----
 
 data_method <- data_gcrmn %>% 
+  # Add missing method (obtained from literature) for CURA1
+  mutate(Method = ifelse(DatasetID == "CURA1" & Year == 1983, "Photo-quadrat", Method)) %>% 
   select(Latitude, Longitude, Year, Method) %>% 
   distinct(.) %>% 
   mutate(Method = str_split_fixed(Method, ",", 6)[,1],
@@ -253,6 +255,7 @@ data_method <- data_gcrmn %>%
                                           "pit") ~ "PIT",
                             Method %in% c("photo-quadrat",
                                           "Photo-quadrat",
+                                          "photoquadrats along 50m transects",
                                           "underwater photo transect") ~ "Photo-quadrat",
                             Method %in% c("visual census",
                                           "visual quadrat estimation",
@@ -303,6 +306,8 @@ rm(data_method, data_method_label)
 
 ## Figure 4
 
+
+
 ```{r}
 
 # 1. Filter and transform the data ----
@@ -323,8 +328,63 @@ data_source <- data_gcrmn %>%
 
 data_source_label <- tibble(Source = c("Unknown", "Government", "Non-tourism private sector", "NGO", 
                                        "Tourism", "Research institute and university"),
-                            x = c(1989, 2013, 2006, 2003, 2012.5, 2005),
-                            y = c(0.85, 0.7, 0.45, 0.3, 0.21, 0.075),
+                            x = c(1995.5, 2012, 2006, 2003, 2012.5, 2005),
+                            y = c(0.90, 0.775, 0.46, 0.3, 0.21, 0.075),
+                            group = c(2, 2, 2, 2, 2, 1)) # Group 1 = text white, group 2 = text black
+
+# 3. Make the plot ----
+
+ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)) +
+  geom_stream(type = "proportional", show.legend = FALSE, alpha = 0.9) +
+  geom_text(data = data_source_label %>% filter(group == 2), 
+            aes(x = x, y = y, label = Source), family = font_choose_graph) +
+  geom_text(data = data_source_label %>% filter(group == 1), 
+            aes(x = x, y = y, label = Source), col = "white", family = font_choose_graph) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  lims(x = c(1980, 2020)) +
+  labs(y = "Percentage of surveys", x = "Year") +
+  scale_y_continuous(labels = scales::percent) +
+  # Arrow for "Unknown"
+  annotate("segment", x = 1998, xend = 2000, y = 0.90, yend = 0.98, col = "black") +
+  # Arrow for "Non-tourism private sector"
+  annotate("segment", x = 2009, xend = 2010, y = 0.49, yend = 0.54, col = "black") +
+  # Arrow for "Tourism"
+  annotate("segment", x = 2017, xend = 2015, y = 0.16, yend = 0.185, col = "black")
+
+# 4. Save the plot ----
+
+ggsave(filename = "../figs/01_figure-4.png", height = 4, width = 8, dpi = 600)
+
+# 5. Remove useless objects ----
+
+rm(data_source, data_source_label)
+
+```
+
+
+
+```{r}
+
+# 1. Filter and transform the data ----
+
+data_source <- data_gcrmn %>% 
+  select(Latitude, Longitude, Year, Source) %>% 
+  distinct(.) %>%
+  group_by(Source, Year) %>% 
+  count(name = "Abs") %>% 
+  ungroup() %>% 
+  complete(Source, fill = list(Abs = 0)) %>% 
+  group_by(Year) %>% 
+  mutate(Rel = (Abs/sum(Abs))*100,
+         Source = fct_relevel(Source, c("Unknown", "Government", "Non-tourism private sector", "NGO", 
+                                       "Tourism", "Research institute and university")))
+
+# 2. Define label positions ----
+
+data_source_label <- tibble(Source = c("Unknown", "Government", "Non-tourism private sector", "NGO", 
+                                       "Tourism", "Research institute and university"),
+                            x = c(1989, 2012, 2006, 2003, 2012.5, 2005),
+                            y = c(0.85, 0.775, 0.45, 0.3, 0.21, 0.075),
                             group = c(1, 2, 2, 2, 2, 1)) # Group 1 = text white, group 2 = text black
 
 # 3. Make the plot ----
@@ -348,7 +408,7 @@ ggsave(filename = "../figs/01_figure-4.png", height = 4, width = 8, dpi = 600)
 
 # 5. Remove useless objects ----
 
-rm(data_method_label, data_source_label)
+rm(data_source, data_source_label)
 
 ```
 
@@ -1726,6 +1786,31 @@ ggsave(filename = "../figs/03_percentage-surveys-by-dataset.png", dpi = 600, wid
 # 4. Export the data ----
 
 write.csv2(surveys_dataset, file = "../figs/03_table-percentage-surveys-by-dataset.csv", row.names = FALSE)
+
+```   
+
+## Number of benthic categories per survey
+
+```{r}
+
+# 1. Transform the data ----
+
+surveys_dataset <- data_gcrmn  %>% 
+  select(Latitude, Longitude, Year, Date, DatasetID, Category, Group, Family, Genus, Species) %>% 
+  distinct(.) %>% 
+  group_by(Latitude, Longitude, Year, Date, DatasetID) %>% 
+  count() %>% 
+  ungroup()
+
+# 2. Make the plot ----
+
+ggplot(data = surveys_dataset, aes(x = n)) +
+  geom_histogram(fill = col_color_map) +
+  labs(x = "Number of benthic categories", y = "Number of surveys")
+
+# 3. Save the plot ----
+
+ggsave(filename = "../figs/03_number-categories-per-surveys.png", dpi = 600, width = 6, height = 4)
 
 ```
 
