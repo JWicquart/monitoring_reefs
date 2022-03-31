@@ -1427,6 +1427,8 @@ ggsave(map_surveys, file = "../figs/03_map-descriptor-surveys.png", height = 6, 
 # 1. Create bins ----
 
 data_descriptors_maps <- data_gcrmn_meow %>% 
+   # Add missing method (obtained from literature) for CURA1
+  mutate(Method = ifelse(DatasetID == "CURA1" & Year == 1983, "Photo-quadrat", Method)) %>% 
   select(Latitude, Longitude, Year, Method, ECOREGION) %>% 
   distinct(.) %>% 
   mutate(Method = str_split_fixed(Method, ",", 6)[,1],
@@ -1442,6 +1444,7 @@ data_descriptors_maps <- data_gcrmn_meow %>%
                                           "pit") ~ "PIT",
                             Method %in% c("photo-quadrat",
                                           "Photo-quadrat",
+                                          "photoquadrats along 50m transects",
                                           "underwater photo transect") ~ "Photo-quadrat",
                             Method %in% c("visual census",
                                           "visual quadrat estimation",
