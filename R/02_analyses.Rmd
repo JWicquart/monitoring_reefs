@@ -641,7 +641,7 @@ palette_cluster <- c("1" = "#2c7bb6",
                      "2" = "#91bfdb",
                      "3" = "#f7ca18",
                      "4" = "#fc8d59",
-                     "5" = "#d73027")
+                     "5" = "#ecf0f1")
 
 # Get the numbers of ecoregions for each cluster
 legend_cluster <- data_ind %>%
@@ -1218,7 +1218,9 @@ ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = area_rel_cut)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu") +
+  #scale_fill_brewer(palette = "RdYlBu") +
+  scale_fill_manual(values = c("#d73027", "#fc8d59", "#91bfdb", "#2c7bb6")) +
+
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5,
                              title = "Relative coral reef area (%)",
@@ -1260,7 +1262,7 @@ map_source <- ggplot() +
   geom_sf(data = data_source, aes(fill = Source)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu") +
+  scale_fill_manual(values = c("#2c7bb6", "#fc8d59",  "#f7ca18", "#ecf0f1")) +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5, nrow = 2,
                              title = "Main stakeholder")) +
@@ -1295,7 +1297,7 @@ map_pixel <- ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = percent_n_cut)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu") +
+  scale_fill_manual(values = c("#ecf0f1", "#fc8d59", "#f7ca18", "#91bfdb", "#2c7bb6")) +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5,
                              title = "Percentage of pixel with data")) +
@@ -1333,7 +1335,7 @@ map_first <- ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = first_year_cut)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu", direction = -1) +
+  scale_fill_manual(values = c("#2c7bb6",  "#91bfdb", "#fc8d59", "#ecf0f1")) +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5,
                              title = "Year with first monitoring")) +
@@ -1370,7 +1372,7 @@ map_years <- ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = n_years_abs_cut)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu") +
+  scale_fill_manual(values = c("#ecf0f1", "#fc8d59", "#f7ca18", "#2c7bb6")) +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5,
                              title = "Number of years with data over 1980 - 2020")) +
@@ -1407,7 +1409,7 @@ map_surveys <- ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = n_surveys_rel_cut)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu") +
+  scale_fill_manual(values = c("#ecf0f1", "#fc8d59", "#f7ca18", "#2c7bb6")) +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5,
                              title = "Relative number of surveys (%)")) +
@@ -1473,7 +1475,7 @@ map_methods <- ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = Method)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  scale_fill_brewer(palette = "RdYlBu") +
+  scale_fill_manual(values = c("#ecf0f1", "#d73027", "#fc8d59", "#f7ca18", "#91bfdb", "#2c7bb6", "#ffec8b")) +
   guides(fill = guide_legend(title.position = "top",
                              title.hjust = 0.5,
                              title = "Most used method")) +

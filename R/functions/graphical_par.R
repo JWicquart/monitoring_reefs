@@ -14,8 +14,6 @@ font_choose_map <- "Open Sans"
 col_fill_map <- "#f2caae"
 col_color_map <- "#888888"
 col_background_map <- "#e4f1fe"
-# Derived from RColorBrewer "RdYlBu" but with another yellow
-palette_5cols <- c("#2c7bb6", "#91bfdb", "#f7ca18", "#fc8d59", "#d73027")
 
 # 4. Define a common crs ----
 
