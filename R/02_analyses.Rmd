@@ -1218,7 +1218,6 @@ ggplot() +
   geom_sf(data = data_descriptors_maps, aes(fill = area_rel_cut)) +
   # Background map
   geom_sf(data = data_map, fill = col_fill_map, col = col_color_map) +
-  #scale_fill_brewer(palette = "RdYlBu") +
   scale_fill_manual(values = c("#d73027", "#fc8d59", "#91bfdb", "#2c7bb6")) +
 
   guides(fill = guide_legend(title.position = "top",
