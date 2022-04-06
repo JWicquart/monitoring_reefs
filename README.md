@@ -1,22 +1,25 @@
-# **Coral reefs benthic monitoring: evolution, potential gaps and recommendations**
+# **Coral reefs benthic monitoring: spatio-temporal distribution, methods and stakeholders**
 
 
 **This repository contains code associated to the article:**
 
-Wicquart, J., [...] Planes, S. (2022). Coral reefs benthic monitoring: evolution, potential gaps and recommendations. _in prep_.
+Wicquart, J., [...] Planes, S. (2022). Coral reefs benthic monitoring: spatio-temporal distribution, methods and stakeholders. _in prep_.
+
+## 1. Abstract
 
 
-## 1. How to download this project?
+
+## 2. How to download this project?
 
 On the project main page on GitHub, click on the green button `Code` and then click on `Download ZIP`
 
-## 2. Context
+## 3. Context
 
 *[To be completed]*
 
-## 3. Description of the project
+## 4. Description of the project
 
-### 3.1 Project organization
+### 4.1 Project organization
 
 * :open_file_folder: `R`
   + :open_file_folder: `functions` Functions used in the two main scripts
@@ -27,7 +30,7 @@ On the project main page on GitHub, click on the green button `Code` and then cl
   + `01_reefs-ecoregion.R` Filter ecoregions containing coral reefs
   + `02_analysis.Rmd` Main analysis script
 
-### 3.2 Data description
+### 4.2 Data description
 
 Four datasets were used for the analyses:
 
@@ -39,12 +42,12 @@ Four datasets were used for the analyses:
 
 * :diving_mask:	**-** Synthetic dataset used for the [*Status of Coral Reefs of the World: 2020*](https://gcrmn.net/2020-report/) report.
 
-## 4. How to report issues?
+## 5. How to report issues?
 
 Please report any bugs or issues [HERE](https://github.com/JWicquart/monitoring_reefs/issues).
 
 
-## 5. Reproducibility parameters
+## 6. Reproducibility parameters
 
 ```R
 R version 4.1.1 (2021-08-10)
