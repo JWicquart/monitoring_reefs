@@ -467,14 +467,14 @@ data_var <- as_tibble(res_pca$var$coord) %>%
 
 # Annotation labels for each descriptor (geom_text_repel plot above circle and segment)
 annotation_label <- tibble(descriptor = data_var$var,
-                           x = c(0.75, 0.625, -0.625, 0.4, 0.70, 0.275),
-                           y = c(0.08, 0.335, 0.35, 0.6, -0.35, -0.65))
+                           x = c(0.85, 0.75, -0.62, 0.55, 0.70, 0.325),
+                           y = c(0.05, 0.25, 0.25, 0.6, -0.4, -0.50))
 
 # 1.2 Make the graph --
 
 plot_var <- ggplot(data = data_var) +
   #geom_text_repel(aes(x = Dim.1, y = Dim.2, label = var), family = font_choose_graph) +
-  geom_text(data = annotation_label, aes(x = x, y = y, label = descriptor), family = font_choose_graph) +
+  geom_text(data = annotation_label, aes(x = x, y = y, label = descriptor), family = font_choose_graph, size = 3.5) +
   geom_segment(aes(x = 0, y = 0, xend = Dim.1, yend = Dim.2),
                   arrow = arrow(length = unit(0.25, "cm"))) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -525,10 +525,14 @@ legend_cluster <- data_ind %>%
   count()
 
 # Legend labels for each cluster (map)
-legend_cluster <- c("1" = glue("<b>1.</b> A (<i>n</i> = ", as.character(legend_cluster[1,"n"]),")"),
-                    "2" = glue("<b>2.</b> B (<i>n</i> = ", as.character(legend_cluster[2,"n"]),")"),
-                    "3" = glue("<b>3.</b> C (<i>n</i> = ", as.character(legend_cluster[3,"n"]),")"),
-                    "4" = glue("<b>4.</b> Unknown, no data (<i>n</i> = ", as.character(legend_cluster[4,"n"]),")"))
+legend_cluster <- c("1" = glue("<b>1.</b> Very high nb. surveys, high temporal ext., high spatial ext. (<i>n</i> = ", 
+                               as.character(legend_cluster[1,"n"]),")"),
+                    "2" = glue("<b>2.</b> High temporal ext., medium spatial ext. (<i>n</i> = ", 
+                               as.character(legend_cluster[2,"n"]),")"),
+                    "3" = glue("<b>3.</b> Low nb. surveys, low temporal ext., low spatial ext. (<i>n</i> = ", 
+                               as.character(legend_cluster[3,"n"]),")"),
+                    "4" = glue("<b>4.</b> Unknown, no data (<i>n</i> = ", 
+                               as.character(legend_cluster[4,"n"]),")"))
 
 # Legend labels for each cluster (plot)
 annotation_cluster <- tibble(cluster = as.character(c(1:3)),
@@ -1520,7 +1524,8 @@ data_descriptors_clust <- data_ind %>%
   st_drop_geometry() %>% 
   select(-"Dim.1", -"Dim.2") %>% 
   left_join(., data_descriptors_pca) %>%
-  mutate(y = 1)
+  mutate(y = 1) %>% 
+  filter(clust != "4")
 
 # 2. Loop to make a plot for each variable (each descriptor) ----
 
@@ -1553,7 +1558,7 @@ for(i in i_colnames){
     geom_violin(fill = "lightgrey", alpha = 0.25, col = "darkgray") +
     geom_vline(xintercept = mean(data_descriptors_clust %>% select(i) %>% pull(), na.rm = TRUE), color = "black") +
     geom_jitter(shape = 21, size = 4, aes(fill = clust), position = pos) +
-    scale_fill_manual(values = palette_cluster, name = "Cluster") +
+    scale_fill_manual(values = palette_cluster[1:3], name = "Cluster") +
     geom_text_repel(show.legend = FALSE, size = 2.5, seed = 20, max.overlaps = 5, family = font_choose_graph, position = pos) +
     theme(axis.title.y = element_blank(),
           axis.text.y = element_blank(),
