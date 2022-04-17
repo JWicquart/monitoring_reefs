@@ -1,4 +1,4 @@
-theme_map <- function(base_size = 12, base_family = font_choose_map, base_line_size = base_size/22, base_rect_size = base_size/22){
+theme_map_desc <- function(base_size = 12, base_family = font_choose_map, base_line_size = base_size/22, base_rect_size = base_size/22){
   
   half_line <- base_size/2
   
@@ -39,15 +39,15 @@ theme_map <- function(base_size = 12, base_family = font_choose_map, base_line_s
         legend.spacing.y = NULL, 
         legend.margin = margin(half_line, half_line, half_line, half_line), 
         legend.key = element_rect(fill = NA, colour = NA), 
-        legend.key.size = unit(1.2, "lines"), 
+        legend.key.size = unit(1, "lines"), 
         legend.key.height = NULL, 
         legend.key.width = NULL, 
-        legend.text = element_text(size = base_size), 
+        legend.text = element_text(size = 9), 
         legend.text.align = NULL, 
         legend.title = element_text(hjust = 0), 
         legend.title.align = 0, 
-        legend.position = "top", 
-        legend.direction = "horizontal", 
+        legend.position = "right", 
+        legend.direction = "vertical", 
         legend.justification = "center", 
         legend.box = NULL, 
         legend.box.margin = margin(0, 0, 0, 0, "cm"), 
