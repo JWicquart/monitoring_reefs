@@ -48,7 +48,7 @@ theme_map_desc <- function(base_size = 12, base_family = font_choose_map, base_l
         legend.title.align = 0, 
         legend.position = "right", 
         legend.direction = "vertical", 
-        legend.justification = "center", 
+        legend.justification = "left", 
         legend.box = NULL, 
         legend.box.margin = margin(0, 0, 0, 0, "cm"), 
         legend.box.background = element_blank(), 

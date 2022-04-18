@@ -1289,6 +1289,37 @@ ggsave("../figs/03_regional-map-pacific.png", dpi = 600, width = 4, height = 5)
 
 ```
 
+### Legend for InkScape layout
+
+```{r}
+
+# 1. Create the legend ----
+
+legend_regional_maps <- ggplot() +
+  geom_sf(data = data_gcrmn_sites, aes(color = interval_class)) +
+  guides(colour = guide_legend(title.position = "top", title.hjust = 0.5, override.aes = list(size = 5))) +
+  scale_color_manual(values = palette_5cols) +
+  theme_map() +
+  labs(col = "Monitoring duration (years)") +
+  theme(legend.background = element_rect(fill = "transparent"),
+        legend.key = element_rect(fill = "transparent"),
+        plot.background = element_rect(fill = "transparent"))
+
+# 2. Extract the legend ---- 
+
+legend_regional_maps <- get_legend(legend_regional_maps)
+
+# 3. Save the legend ----
+
+ggsave("../figs/03_regional-map-legend.png", legend_regional_maps, 
+       width = 5, height = 1.5, dpi = 600, bg = "transparent")
+
+# 4. Remove useless objects ----
+
+rm(legend_regional_maps)
+
+```
+
 ## Maps of descriptors
 
 ### Reef area by ecoregion
