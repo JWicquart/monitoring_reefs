@@ -542,7 +542,7 @@ data_ind <- left_join(data_hcpc_cluster, data_hcpc_descriptors) %>%
 # Palette of colors for each cluster
 palette_cluster <- c("1" = "#2c7bb6",
                      "2" = "#f7ca18",
-                     "3" = "#fc8d59",
+                     "3" = "#d73027",
                      "4" = "white")
 
 # Get the numbers of ecoregions for each cluster
@@ -563,9 +563,9 @@ legend_cluster <- c("1" = glue("<b>1.</b> Very high nb. surveys, high temporal e
 
 # Legend labels for each cluster (plot)
 annotation_cluster <- tibble(cluster = as.character(c(1:3)),
-                             x = c(6.5, 5.5, -1.5),
-                             y = c(2.5, -1, -2),
-                             col_cluster = c("white", "black", "black"))
+                             x = c(6.5, 5, -1.5),
+                             y = c(2.5, -1.5, -2),
+                             col_cluster = c("white", "black", "white"))
 
 # 2.2 Make the graph without clusters colors --
 
@@ -596,7 +596,7 @@ plot_ind_col <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CO
        title = "B") +
   geom_label(data = annotation_cluster, aes(x = x, y = y, label = paste("Cluster", cluster), 
                                             fill = cluster, color = col_cluster), 
-             label.r = unit(0, "lines"), label.size = 0, show.legend = FALSE, alpha = 0.75, family = font_choose_graph) +
+             label.r = unit(0, "lines"), label.size = 0, show.legend = FALSE, family = font_choose_graph) +
   scale_fill_manual(values = palette_cluster) +
   scale_color_identity()
 
