@@ -1384,7 +1384,7 @@ map_source <- ggplot() +
   # Country boundaries
   geom_sf(data = data_countries_160, size = 0.2) +
   coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  scale_fill_manual(values = c("#2c7bb6", "#fc8d59",  "#f7ca18", "white")) +
+  scale_fill_manual(values = c("#2c7bb6", "#fc8d59",  "#d73027", "white")) +
   guides(fill = guide_legend(title = "Main stakeholder")) +
   theme_map_desc()
 
@@ -1417,7 +1417,7 @@ map_pixel <- ggplot() +
   # Country boundaries
   geom_sf(data = data_countries_160, size = 0.2) +
   coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  scale_fill_manual(values = c("#fc8d59", "#f7ca18", "#91bfdb", "#2c7bb6", "white")) +
+  scale_fill_manual(values = c("#2c7bb6", "#91bfdb", "#fc8d59", "#d73027", "white")) +
   guides(fill = guide_legend(title = "Percentage of pixel with data")) +
   theme_map_desc()
 
@@ -1453,7 +1453,7 @@ map_first <- ggplot() +
   # Country boundaries
   geom_sf(data = data_countries_160, size = 0.2) +
   coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  scale_fill_manual(values = c("#2c7bb6",  "#91bfdb", "#fc8d59", "white")) +
+  scale_fill_manual(values = c("#2c7bb6", "#fc8d59",  "#d73027", "white")) +
   guides(fill = guide_legend(title = "Year with first monitoring")) +
   theme_map_desc()
 
@@ -1488,7 +1488,7 @@ map_years <- ggplot() +
   # Country boundaries
   geom_sf(data = data_countries_160, size = 0.2) +
   coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  scale_fill_manual(values = c("#fc8d59", "#f7ca18", "#2c7bb6", "white")) +
+  scale_fill_manual(values = c("#2c7bb6", "#fc8d59",  "#d73027", "white")) +
   guides(fill = guide_legend(title = "Number of years with data")) +
   theme_map_desc()
 
@@ -1523,7 +1523,7 @@ map_surveys <- ggplot() +
   # Country boundaries
   geom_sf(data = data_countries_160, size = 0.2) +
   coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  scale_fill_manual(values = c("#fc8d59", "#f7ca18", "#2c7bb6", "white")) +
+  scale_fill_manual(values = c("#2c7bb6", "#fc8d59",  "#d73027", "white")) +
   guides(fill = guide_legend(title = "Relative number of surveys (%)")) +
   theme_map_desc()
 
@@ -1588,7 +1588,7 @@ map_methods <- ggplot() +
   # Country boundaries
   geom_sf(data = data_countries_160, size = 0.2) +
   coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  scale_fill_manual(values = c("#fc8d59", "#f7ca18", "#91bfdb", "#2c7bb6", "#ffec8b", "white")) +
+  scale_fill_manual(values = c("#2c7bb6", "#91bfdb", "#f7ca18", "#fc8d59", "#d73027", "white")) +
   guides(fill = guide_legend(title = "Most used method")) +
   theme_map_desc()
 
