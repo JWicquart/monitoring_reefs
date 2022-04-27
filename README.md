@@ -3,7 +3,7 @@
 
 **This repository contains code associated to the article:**
 
-Wicquart, J., [...] Planes, S. (2022). Coral reefs benthic monitoring: spatio-temporal distribution, methods and stakeholders. _in prep_.
+Wicquart, J., Prasil-Delaval, N., Obura, D., Gudka, M., Logan, M., Souter, D., Staub, F., Towle, E.K., Burt, J.A., Padovani Ferreira, B., Kimura, T., Chan, S., Tun, K., Ibrahim, N., Amer, M.,  Reyes Bonilla, H., Smith, F.,  GCRMN Consortium, Planes, S. (2022). Coral reefs benthic monitoring: spatio-temporal distribution, methods and stakeholders. _in prep_.
 
 ## 1. Abstract
 
@@ -50,7 +50,7 @@ Please report any bugs or issues [HERE](https://github.com/JWicquart/monitoring_
 ## 6. Reproducibility parameters
 
 ```R
-R version 4.1.1 (2021-08-10)
+R version 4.1.3 (2022-03-10)
 Platform: x86_64-w64-mingw32/x64 (64-bit)
 Running under: Windows 10 x64 (build 18363)
 
@@ -65,30 +65,29 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
- [1] extrafont_0.17     ggforce_0.3.3      RColorBrewer_1.1-2 FactoMineR_2.4    
- [5] ggrepel_0.9.1      glue_1.4.2         ggtext_0.1.1       ggsflabel_0.0.1   
- [9] cowplot_1.1.1      ggstream_0.1.0     sf_1.0-3           forcats_0.5.1     
-[13] stringr_1.4.0      dplyr_1.0.7        purrr_0.3.4        readr_2.0.2       
-[17] tidyr_1.1.4        tibble_3.1.5       ggplot2_3.3.5      tidyverse_1.3.1   
-[21] magrittr_2.0.1    
+ [1] ggforce_0.3.3      RColorBrewer_1.1-2 FactoMineR_2.4     ggrepel_0.9.1     
+ [5] glue_1.6.2         ggtext_0.1.1       ggsflabel_0.0.1    cowplot_1.1.1     
+ [9] patchwork_1.1.1    ggstream_0.1.0     sf_1.0-7           forcats_0.5.1     
+[13] stringr_1.4.0      dplyr_1.0.8        purrr_0.3.4        readr_2.1.2       
+[17] tidyr_1.2.0        tibble_3.1.6       ggplot2_3.3.5      tidyverse_1.3.1   
+[21] magrittr_2.0.3    
 
 loaded via a namespace (and not attached):
- [1] fs_1.5.0             lubridate_1.8.0      httr_1.4.2           tools_4.1.1         
- [5] backports_1.2.1      utf8_1.2.2           R6_2.5.1             DT_0.19             
- [9] KernSmooth_2.23-20   DBI_1.1.1            colorspace_2.0-2     withr_2.4.2         
-[13] tidyselect_1.1.1     compiler_4.1.1       extrafontdb_1.0      cli_3.0.1           
-[17] rvest_1.0.1          flashClust_1.01-2    xml2_1.3.2           labeling_0.4.2      
-[21] scales_1.1.1         classInt_0.4-3       proxy_0.4-26         digest_0.6.28       
-[25] rmarkdown_2.11       pkgconfig_2.0.3      htmltools_0.5.2      dbplyr_2.1.1        
-[29] fastmap_1.1.0        htmlwidgets_1.5.4    rlang_0.4.11         readxl_1.3.1        
-[33] rstudioapi_0.13      generics_0.1.0       farver_2.1.0         jsonlite_1.7.2      
-[37] leaps_3.1            Rcpp_1.0.7           munsell_0.5.0        fansi_0.5.0         
-[41] lifecycle_1.0.1      scatterplot3d_0.3-41 stringi_1.7.5        yaml_2.2.1          
-[45] MASS_7.3-54          grid_4.1.1           crayon_1.4.1         lattice_0.20-45     
-[49] haven_2.4.3          gridtext_0.1.4       hms_1.1.1            knitr_1.36          
-[53] pillar_1.6.3         reprex_2.0.1         evaluate_0.14        modelr_0.1.8        
-[57] vctrs_0.3.8          tzdb_0.1.2           tweenr_1.0.2         Rttf2pt1_1.3.9      
-[61] cellranger_1.1.0     gtable_0.3.0         polyclip_1.10-0      assertthat_0.2.1    
-[65] xfun_0.26            broom_0.7.9          e1071_1.7-9          rsconnect_0.8.24    
-[69] class_7.3-19         units_0.7-2          cluster_2.1.2        ellipsis_0.3.2
+ [1] httr_1.4.2           jsonlite_1.8.0       modelr_0.1.8         assertthat_0.2.1    
+ [5] cellranger_1.1.0     yaml_2.3.5           pillar_1.7.0         backports_1.4.1     
+ [9] lattice_0.20-45      digest_0.6.29        polyclip_1.10-0      gridtext_0.1.4      
+[13] rvest_1.0.2          colorspace_2.0-3     htmltools_0.5.2      pkgconfig_2.0.3     
+[17] broom_0.7.12         haven_2.4.3          scales_1.1.1         tweenr_1.0.2        
+[21] tzdb_0.3.0           proxy_0.4-26         farver_2.1.0         generics_0.1.2      
+[25] DT_0.22              ellipsis_0.3.2       withr_2.5.0          cli_3.2.0           
+[29] crayon_1.5.1         readxl_1.4.0         evaluate_0.15        fs_1.5.2            
+[33] fansi_1.0.3          MASS_7.3-55          xml2_1.3.3           class_7.3-20        
+[37] tools_4.1.3          hms_1.1.1            lifecycle_1.0.1      munsell_0.5.0       
+[41] reprex_2.0.1         cluster_2.1.2        flashClust_1.01-2    compiler_4.1.3      
+[45] e1071_1.7-9          rlang_1.0.2          classInt_0.4-3       units_0.8-0         
+[49] grid_4.1.3           rstudioapi_0.13      htmlwidgets_1.5.4    leaps_3.1           
+[53] rmarkdown_2.13       gtable_0.3.0         DBI_1.1.2            R6_2.5.1            
+[57] lubridate_1.8.0      knitr_1.38           fastmap_1.1.0        utf8_1.2.2          
+[61] KernSmooth_2.23-20   stringi_1.7.6        Rcpp_1.0.8.3         vctrs_0.4.0         
+[65] scatterplot3d_0.3-41 dbplyr_2.1.1         tidyselect_1.1.2     xfun_0.30  
 ```
