@@ -552,11 +552,11 @@ legend_cluster <- data_ind %>%
   count()
 
 # Legend labels for each cluster (map)
-legend_cluster <- c("1" = glue("<b>1.</b> Very high nb. surveys, high temporal ext., high spatial ext. (<i>n</i> = ", 
+legend_cluster <- c("1" = glue("<b>1.</b> Very high number of surveys, high temporal extent, high spatial extent (<i>n</i> = ", 
                                as.character(legend_cluster[1,"n"]),")"),
-                    "2" = glue("<b>2.</b> High temporal ext., medium spatial ext. (<i>n</i> = ", 
+                    "2" = glue("<b>2.</b> High temporal extent, medium spatial extent (<i>n</i> = ", 
                                as.character(legend_cluster[2,"n"]),")"),
-                    "3" = glue("<b>3.</b> Low nb. surveys, low temporal ext., low spatial ext. (<i>n</i> = ", 
+                    "3" = glue("<b>3.</b> Low number of surveys, low temporal extent, low spatial extent (<i>n</i> = ", 
                                as.character(legend_cluster[3,"n"]),")"),
                     "4" = glue("<b>4.</b> Unknown, no data (<i>n</i> = ", 
                                as.character(legend_cluster[4,"n"]),")"))
@@ -627,6 +627,7 @@ ggplot() +
   guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
   theme_map() +
   theme(legend.position = "top", 
+        legend.justification = "left",
         legend.direction = "vertical",
         legend.title = element_text(face = "bold"),
         legend.text = element_markdown()) +
