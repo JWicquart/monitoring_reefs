@@ -1878,6 +1878,29 @@ ggsave(filename = "../figs/03_number-categories-per-surveys.png", dpi = 600, wid
 
 ```
 
+## GCRMN consortium list
+
+```{r eval=FALSE, include=FALSE}
+
+# 1. Import the list of people who contributes for the 2020 GCRMN report ----
+
+list_consortium <- read.csv2("../misc/gcrmn-consortium_list-gcrmn-2020.csv", encoding = "latin1") %>% 
+  select(-Area)
+
+# 2. Export the list of people for which data were used in this article ----
+
+data_gcrmn %>% 
+  select(DatasetID) %>% 
+  distinct() %>% 
+  left_join(., list_consortium) %>% 
+  janitor::clean_names() %>% 
+  rename(owner_name = name, owner_email = email) %>% 
+  mutate(owner_affiliation = NA, .before = owner_email) %>% 
+  mutate(mail_language = NA, first_mail = NA, second_mail = NA, reply = NA) %>% 
+  write.csv2(., file = "../misc/gcrmn-consortium_list-authors.csv", row.names = FALSE, fileEncoding = "latin1")
+
+```
+
 # Reproducibility
 
 ```{r reprod}
