@@ -29,7 +29,6 @@ sf_use_s2(FALSE) # Switch from S2 to GEOS
 library(ggstream)
 library(patchwork)
 library(cowplot)
-library(ggsflabel)
 library(ggtext)
 library(glue)
 library(ggrepel)
@@ -851,11 +850,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -909,11 +908,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -966,11 +965,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -1023,11 +1022,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -1080,11 +1079,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -1137,11 +1136,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -1195,11 +1194,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +
@@ -1265,11 +1264,11 @@ ggplot() +
   # First data buffer (for ocean color background)
   geom_sf(data = data_buffer, fill = col_background_map) +
   # MEOW
-  geom_sf(data = data_meowreefs_region, fill = "#ecf0f1") +
+  geom_sf(data = data_meowreefs_region, fill = col_background_meow) +
   # Background map
-  geom_sf(data = data_map_region, fill = col_fill_map, col = col_color_map) +
+  geom_sf(data = data_map_region, size = 0.25) +
   # Country boundaries
-  geom_sf(data = data_countries_region,  fill = col_fill_map, col = col_color_map, size = 0.25) +
+  geom_sf(data = data_countries_region, size = 0.2) +
   # GCRMN sites
   geom_sf(data = data_sites_region, aes(color = interval_class), show.legend = FALSE) +
   scale_color_manual(values = palette_5cols) +

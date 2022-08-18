@@ -4,16 +4,16 @@ require(extrafont) # For fonts
 
 # 2. Set the default font family ----
 
-windowsFonts("Open Sans" = windowsFont("Open Sans"))
+#windowsFonts("Open Sans" = windowsFont("Open Sans"))
 
-font_choose_graph <- "Open Sans"
-font_choose_map <- "Open Sans"
+font_choose_graph <- "Futura Bk BT"
+font_choose_map <- "Futura Bk BT"
 
 # 3. Set the colors ----
 
-col_fill_map <- "#f2caae"
 col_color_map <- "#888888"
-col_background_map <- "#e4f1fe"
+col_background_map <- "white"
+col_background_meow <- "#f8f8f8"
 
 # Derived from RColorBrewer "RdYlBu" palette but with another yellow
 palette_5cols <- c("#2c7bb6", "#91bfdb", "#f7ca18", "#fc8d59", "#d73027")
