@@ -4,10 +4,10 @@ require(extrafont) # For fonts
 
 # 2. Set the default font family ----
 
-#windowsFonts("Open Sans" = windowsFont("Open Sans"))
+windowsFonts("Open Sans" = windowsFont("Open Sans"))
 
-font_choose_graph <- "Futura Bk BT"
-font_choose_map <- "Futura Bk BT"
+font_choose_graph <- "Open Sans"
+font_choose_map <- "Open Sans"
 
 # 3. Set the colors ----
 

@@ -59,6 +59,8 @@ data_gcrmn <- read.csv2(file = "../data/03-merge_all_all_all_benthos_NA.csv") %>
   filter(!(Longitude %in% c(33.50138889, 52.7500, 50.71666667))) %>% 
   filter(!(Site %in% c("34.26.62E.28.51.79S", "34.41.08E.27.31.66S", "NSIslandsSouth", 
                        "29N34E4", "34.4.4.97E.29.7.39.89N", "34.26.013E.28.26.151N", "34.18.5E27.54.8N"))) %>% 
+  filter(!(DatasetID == "WIOO2.1" & Location == "Bazaruto Island")) %>% 
+  filter(!(DatasetID == "WIOO2.28" & Latitude == -12.16667)) %>% 
   # Add data sources
   left_join(., read.csv2("../data/05_data-sources.csv")) %>% 
   mutate(Source = str_replace_all(Source, c("Research Institute and University" = "Research institute and university")),
