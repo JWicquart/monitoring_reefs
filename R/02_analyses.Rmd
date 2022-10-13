@@ -144,6 +144,8 @@ data_countries_160 <- data_countries %>%
 # 4. Make the map ----
 
 ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_meowreefs, fill = "white", col = col_color_map, size = 0.5) +
   # Site of benthic cover data
@@ -590,7 +592,7 @@ ggsave(filename = "./../figs/03_pca-graph-combined-without-col.png", height = 5,
 plot_ind_col <- ggplot(data = data_ind, aes(x = Dim.1, y = Dim.2, label = ECO_CODE_X, fill = clust)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_vline(xintercept = 0, linetype = "dashed") +
-  geom_point(show.legend = FALSE, size = 4, shape = 21, col = "black") +
+  geom_point(show.legend = FALSE, size = 4, shape = 21, col = "black", alpha = 0.9) +
   geom_text_repel(show.legend = FALSE, size = 3, seed = 20, max.overlaps = 5, family = font_choose_graph) +
   labs(x = paste0("Dim 1 (", round(res_pca$eig[1,2], 2), "%)"), 
        y = paste0("Dim 2 (", round(res_pca$eig[2,2], 2), "%)"),
@@ -618,8 +620,10 @@ ggsave(filename = "./../figs/01_figure-3.png", height = 5, width = 10, dpi = 600
 # 1.1 Make the map --
 
 ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # Clusters
-  geom_sf(data = data_ind, aes(fill = clust)) +
+  geom_sf(data = data_ind, aes(fill = clust), alpha = 0.9) +
   # Background map
   geom_sf(data = data_map_160, size = 0.25) +
   # Country boundaries
@@ -645,22 +649,24 @@ for(i in 1:4){
   # 2.1 Make the map --
 
   ggplot() +
-  # MEOW
-  geom_sf(data = data_meowreefs, fill = "transparent") +
-  # Clusters
-  geom_sf(data = data_ind %>% filter(clust == as.character(i)), aes(fill = clust)) +
-  # Background map
-  geom_sf(data = data_map_160, size = 0.25) +
-  # Country boundaries
-  geom_sf(data = data_countries_160, size = 0.2) +
-  coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
-  guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
-  theme_map() +
-  theme(legend.position = "top", 
-        legend.direction = "vertical",
-        legend.title = element_text(face = "bold"),
-        legend.text = element_markdown()) +
-  scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
+    # Tropics
+    geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
+    # MEOW
+    geom_sf(data = data_meowreefs, fill = "transparent") +
+    # Clusters
+    geom_sf(data = data_ind %>% filter(clust == as.character(i)), aes(fill = clust), alpha = 0.9) +
+    # Background map
+    geom_sf(data = data_map_160, size = 0.25) +
+    # Country boundaries
+    geom_sf(data = data_countries_160, size = 0.2) +
+    coord_sf(ylim = c(-5000000, 5000000), expand = FALSE) +
+    guides(fill = guide_legend(title.position = "top", title.hjust = 0)) +
+    theme_map() +
+    theme(legend.position = "top", 
+          legend.direction = "vertical",
+          legend.title = element_text(face = "bold"),
+          legend.text = element_markdown()) +
+    scale_fill_manual(values = palette_cluster, labels = legend_cluster, name = "Cluster and interpretation")
 
   # 2.2 Save the map --
 
@@ -1163,7 +1169,7 @@ ggsave("../figs/03_regional-map-south-asia.png", dpi = 600, width = 4, height = 
 
 ```
 
-### East Asia
+### East Asian Seas
 
 ```{r}
 
@@ -1213,7 +1219,7 @@ ggplot() +
         axis.ticks = element_blank(),
         axis.title = element_blank(),
         plot.title = element_text(hjust = 0.5, size = 16)) +
-  labs(title = "East Asia")
+  labs(title = "East Asian Seas")
  
 # 7. Save the map ----
 
@@ -1338,6 +1344,8 @@ data_descriptors_maps <- data_descriptors %>%
 # 2. Make the map ----
 
 ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_descriptors_maps, aes(fill = area_rel_cut)) +
   # Background map
@@ -1379,6 +1387,8 @@ data_source <- data_gcrmn_meow %>%
 # 2. Make the map ----
 
 map_source <- ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_source, aes(fill = Source)) +
   # Background map
@@ -1412,6 +1422,8 @@ data_descriptors_maps <- data_descriptors %>%
 # 2. Make the map ----
 
 map_pixel <- ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_descriptors_maps, aes(fill = percent_n_cut)) +
   # Background map
@@ -1448,6 +1460,8 @@ data_descriptors_maps <- data_descriptors %>%
 # 2. Make the map ----
 
 map_first <- ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_descriptors_maps, aes(fill = first_year_cut)) +
   # Background map
@@ -1483,6 +1497,8 @@ data_descriptors_maps <- data_descriptors %>%
 # 2. Make the map ----
 
 map_years <- ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_descriptors_maps, aes(fill = n_years_abs_cut)) +
   # Background map
@@ -1518,6 +1534,8 @@ data_descriptors_maps <- data_descriptors %>%
 # 2. Make the map ----
 
 map_surveys <- ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_descriptors_maps, aes(fill = n_surveys_rel_cut)) +
   # Background map
@@ -1583,6 +1601,8 @@ data_descriptors_maps <- data_gcrmn_meow %>%
 # 2. Make the map ----
 
 map_methods <- ggplot() +
+  # Tropics
+  geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # MEOW
   geom_sf(data = data_descriptors_maps, aes(fill = Method)) +
   # Background map
