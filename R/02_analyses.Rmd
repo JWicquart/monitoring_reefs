@@ -708,10 +708,10 @@ data_method <- data_gcrmn %>%
                                           "underwater photo transect") ~ "Photo-quadrat",
                             Method %in% c("visual census",
                                           "visual quadrat estimation",
-                                          "vis est.") ~ "Visual census",
+                                          "vis est.") ~ "Visual estimation",
                             Method == "video-transect" ~ "Video transect",
                             TRUE ~ "Unknown")) %>% 
-  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"))) %>% 
+  mutate(Method = fct_relevel(Method, c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual estimation"))) %>% 
   group_by(Method, Year) %>% 
   count(name = "Abs") %>% 
   ungroup() %>% 
@@ -721,8 +721,8 @@ data_method <- data_gcrmn %>%
 
 # 2. Define label positions ----
 
-data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual census"),
-                            x = c(1997, 2012, 2003, 1989, 2001, 1988),
+data_method_label <- tibble(Method = c("Unknown", "Photo-quadrat", "PIT", "LIT", "Video transect", "Visual estimation"),
+                            x = c(1997, 2012, 2003, 1989, 2001, 1990),
                             y = c(0.95, 0.75, 0.5, 0.65, 0.22, 0.20),
                             group = c(1, 2, 2, 2, 2, 1)) # Group 1 = text white, group 2 = text black
 
@@ -1581,14 +1581,14 @@ data_descriptors_maps <- data_gcrmn_meow %>%
                                           "underwater photo transect") ~ "Photo-quadrat",
                             Method %in% c("visual census",
                                           "visual quadrat estimation",
-                                          "vis est.") ~ "Visual census",
+                                          "vis est.") ~ "Visual estimation",
                             Method == "video-transect" ~ "Video transect",
                             TRUE ~ "Unknown, no data")) %>%
   left_join(data_meowreefs, .) %>% 
   mutate(Method = replace_na(Method, "Unknown, no data"),
          Method = as.factor(Method),
          Method = fct_relevel(Method, c("Photo-quadrat", "Video transect", 
-                                        "PIT", "LIT", "Visual census", "Unknown, no data"))) %>% 
+                                        "PIT", "LIT", "Visual estimation", "Unknown, no data"))) %>% 
   group_by(Method, ECOREGION) %>% 
   count(name = "Abs") %>% 
   ungroup() %>% 
