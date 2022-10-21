@@ -28,7 +28,6 @@ library(sf)
 sf_use_s2(FALSE) # Switch from S2 to GEOS
 library(ggstream)
 library(patchwork)
-library(cowplot)
 library(ggtext)
 library(glue)
 library(ggrepel)
@@ -225,7 +224,9 @@ plot_duration <- ggplot(data = data_duration, aes(x = interval_class, y = n_rel)
 
 # 4. Make the assembled plot ----
 
-plot_grid(plot_duration, plot_year, plot_depth, nrow = 1, labels = c("A", "B", "C"))
+plot_duration + plot_year + plot_depth + plot_layout(nrow = 1) + 
+  plot_annotation(tag_levels = "A") &
+    theme(plot.tag = element_text(face = "bold"))
 
 # 5. Save the plot ----
 
@@ -1315,7 +1316,7 @@ legend_regional_maps <- ggplot() +
 
 # 2. Extract the legend ---- 
 
-legend_regional_maps <- get_legend(legend_regional_maps)
+legend_regional_maps <- cowplot::get_legend(legend_regional_maps)
 
 # 3. Save the legend ----
 
@@ -1626,12 +1627,16 @@ ggsave(map_methods, file = "../figs/03_map-descriptor-methods.png", height = 3, 
 
 # 1. Make the map ----
 
-plot_grid(map_methods, map_source, map_pixel, map_surveys, map_first, map_years, map_methods, 
-          nrow = 6, ncol = 1, labels = c("A", "B", "C", "D", "E", "F"), align = "hv")
+map_methods + map_source + map_pixel + map_surveys + map_first + map_years + 
+  theme(plot.tag = element_text(face = "bold"),
+        plot.tag.position = "topleft") +
+  plot_layout(ncol = 1) + 
+  plot_annotation(tag_levels = c("A")) &
+  theme(plot.tag = element_text(face = "bold"))
 
 # 2. Save the map ----
 
-ggsave(file = "../figs/02_supplementary-3.png", height = 12, width = 10.5)
+ggsave(file = "../figs/02_supplementary-3.png", height = 12, width = 10)
 
 ```
 
@@ -1696,30 +1701,23 @@ for(i in i_colnames){
 
 # 3. Combine plots ----
 
-# 3.1 Extract the legend from one of the plots --
+plots <- plot_list[["n_sites_abs"]] + 
+  plot_list[["n_surveys_abs"]] +
+  plot_list[["first_year"]] +
+  plot_list[["n_15_abs"]] +
+  plot_list[["n_years_abs"]] +
+  plot_list[["n_percent"]] &
+  theme(legend.position = "top") # Shared legend
 
-common_legend <- get_legend(plot_list[["n_sites_abs"]])
-
-# 3.2 Combine plots --
-
-plot_grid(common_legend, 
-          plot_list[["n_sites_abs"]] + theme(legend.position = "none",
-                                             plot.margin = unit(c(1,3,1,3), "lines")), 
-          plot_list[["n_surveys_abs"]] + theme(legend.position = "none",
-                                               plot.margin = unit(c(1,3,1,3), "lines")),
-          plot_list[["first_year"]] + theme(legend.position = "none",
-                                            plot.margin = unit(c(1,3,1,3), "lines")), 
-          plot_list[["n_15_abs"]] + theme(legend.position = "none",
-                                          plot.margin = unit(c(1,3,1,3), "lines")), 
-          plot_list[["n_years_abs"]] + theme(legend.position = "none",
-                                             plot.margin = unit(c(1,3,1,3), "lines")), 
-          plot_list[["n_percent"]] + theme(legend.position = "none",
-                                           plot.margin = unit(c(1,3,1,3), "lines")), 
-          ncol = 1, rel_heights = c(0.5, rep(1,6)))
+plots + plot_layout(ncol = 1, guides = "collect")
 
 # 4. Save the plot ----
 
 ggsave(filename = "../figs/02_supplementary-4.png", dpi = 600, width = 8, height = 12)
+
+# 5. Remove useless objects ----
+
+rm(plots, plot_list)
 
 ```
 
@@ -1805,7 +1803,7 @@ plot_pixel <- ggplot(data = data_descriptors, aes(x = fct_reorder(name, area_rel
 
 # 3. Assemble the plots ----
 
-plot_grid(plot_area, plot_surveys, plot_years, plot_pixel, nrow = 1, rel_widths = c(1, 0.35, 0.35, 0.35))
+plot_area + plot_surveys + plot_years + plot_pixel + plot_layout(nrow = 1)
 
 # 4. Save the plot ----
 
