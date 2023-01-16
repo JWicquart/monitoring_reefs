@@ -624,7 +624,7 @@ ggplot() +
   # Tropics
   geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
   # Clusters
-  geom_sf(data = data_ind, aes(fill = clust), alpha = 0.9) +
+  geom_sf(data = data_ind, aes(fill = clust), alpha = 0.9, color = "black", size = 3) +
   # Background map
   geom_sf(data = data_map_160, size = 0.25) +
   # Country boundaries
@@ -653,7 +653,7 @@ for(i in 1:4){
     # Tropics
     geom_hline(yintercept = c(2608958.17028999, 0, -2608958.17028999), linetype = "dashed", col = "black", size = 0.2) +
     # MEOW
-    geom_sf(data = data_meowreefs, fill = "transparent") +
+    geom_sf(data = data_meowreefs, fill = "white", color = "black", size = 3) +
     # Clusters
     geom_sf(data = data_ind %>% filter(clust == as.character(i)), aes(fill = clust), alpha = 0.9) +
     # Background map
@@ -789,7 +789,7 @@ ggplot(data = data_source, aes(x = Year, y = Rel, fill = Source, label = Source)
   geom_text(data = data_source_label %>% filter(group == 1), 
             aes(x = x, y = y, label = Source), col = "white", family = font_choose_graph) +
   scale_fill_brewer(palette = "RdYlBu") +
-  lims(x = c(1980, 2020)) +
+  lims(x = c(1979, 2020)) +
   labs(y = "Percentage of surveys", x = "Year") +
   scale_y_continuous(labels = scales::percent) +
   # Arrow for "Unknown"
