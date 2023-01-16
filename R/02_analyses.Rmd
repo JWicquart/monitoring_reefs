@@ -26,6 +26,7 @@ library(magrittr)
 library(tidyverse) # Core tidyverse packages
 library(sf)
 sf_use_s2(FALSE) # Switch from S2 to GEOS
+library(readxl)
 library(ggstream)
 library(patchwork)
 library(ggtext)
@@ -1897,6 +1898,46 @@ ggsave(filename = "../figs/03_number-categories-per-surveys.png", dpi = 600, wid
 
 ```
 
+## Relationship between GDP and monitoring effort
+
+```{r}
+
+# 1. Join GDP and EEZ data (attribute a GDP to each EEZ) ----
+
+data_gdp <- read_xls(path = "../data/06_data-world-bank_gdp.xls", skip = 2) %>% 
+  select("Country Code", "2018") %>% 
+  rename(ISO_SOV1 = "Country Code", gdp = "2018")
+
+data_gdp <- st_read("../data/07_data-eez/eez_v11.shp") %>% 
+  left_join(., data_gdp)
+
+# 2. Intersection between MEOW and EEZ ----
+
+data_gdp <- st_intersection(data_gdp, data_meowreefs) %>% 
+  mutate(area = st_area(geometry),
+         area = as.numeric(area)) %>% 
+  st_drop_geometry() %>% 
+  group_by(ECOREGION) %>% 
+  mutate(total_area = sum(area),
+         area_rel = (area*100)/total_area) %>% 
+  ungroup() %>% 
+  mutate(gdp = gdp*area_rel) %>% 
+  group_by(ECOREGION) %>% 
+  summarise(gdp = mean(gdp, na.rm = TRUE))
+
+# 3. Make the plot ----
+
+data_descriptors <- read.csv2("../figs/02_table-of-descriptors.csv")
+
+data_gdp <- data_gdp %>% 
+  rename(Name = ECOREGION) %>% 
+  left_join(., data_descriptors)
+
+ggplot(data = data_gdp, aes(x = gdp, y = Surveys, label = Name)) +
+  geom_point() +
+  geom_label()
+
+```
 ## GCRMN consortium list
 
 ```{r eval=FALSE, include=FALSE}
