@@ -1816,6 +1816,48 @@ rm(plot_area, plot_surveys, plot_years, plot_pixel)
 
 ```
 
+## Long-tail of monitoring
+
+```{r}
+
+# 1. Transform the data ----
+
+data_longtail <- data_gcrmn %>% 
+  select(Latitude, Longitude, Date, Year, DatasetID) %>% 
+  distinct(.) %>% 
+  group_by(DatasetID) %>% 
+  count() %>% 
+  ungroup() %>% 
+  arrange(-n) %>% 
+  mutate(name = row_number(),
+         n = (n*100)/sum(n))
+
+# 2. Make the plot ----
+
+ggplot(data = data_longtail, aes(x = name, y = n)) +
+  geom_point() +
+  geom_path() +
+  lims(y = c(0, 25), x = c(0, 400)) +
+  labs(x = "Dataset index", y = "Relative size of the dataset\n(% of observations)") +
+  theme(text = element_text(family = "Open Sans"),
+        panel.background = element_blank(),
+        plot.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.line.y = element_line(),
+        plot.title = element_markdown(size = 25),
+        plot.subtitle = element_markdown(size = 15),
+        axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14)) +
+  coord_cartesian(expand = TRUE, clip = "off")
+
+# 3. Save the plot ----
+
+ggsave(filename = "../figs/03_long-tail-ecological-monitoring.png", dpi = 600, width = 6, height = 4, bg = "transparent")
+
+```
+
 ## Datasets by year
 
 ```{r}
@@ -1935,9 +1977,15 @@ data_gdp <- data_gdp %>%
 
 ggplot(data = data_gdp, aes(x = gdp, y = Surveys, label = Name)) +
   geom_point() +
-  geom_label()
+  geom_label(size = 2.5) +
+  labs(x = "GDP (constant $US)", y = "Number of surveys")
+
+# 4. Save the plot ----
+
+ggsave("../figs/03_relationship-gdp-surveys.png", dpi = 600, width = 7, height = 5)
 
 ```
+
 ## GCRMN consortium list
 
 ```{r eval=FALSE, include=FALSE}
