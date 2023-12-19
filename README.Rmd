@@ -1,0 +1,74 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "",
+  out.width = "100%"
+)
+options(tibble.print_min = 5, tibble.print_max = 5)
+```
+
+# **Coral reefs benthic monitoring: spatio-temporal distribution, methods and stakeholders**
+
+
+**This repository contains code associated to the article:**
+
+Wicquart, J., Prasil-Delaval, N., Obura, D., Gudka, M., Logan, M., Souter, D., Staub, F., Towle, E.K., Burt, J.A., Padovani Ferreira, B., Kimura, T., Chan, S., Tun, K., Ibrahim, N., Amer, M.,  Reyes Bonilla, H., Smith, F.,  GCRMN Consortium, Planes, S. (2022). Coral reefs benthic monitoring: spatio-temporal distribution, methods and stakeholders. _in prep_.
+
+## 1. Abstract
+
+
+
+## 2. How to download this project?
+
+On the project main page on GitHub, click on the green button `Code` and then click on `Download ZIP`
+
+## 3. Context
+
+*[To be completed]*
+
+## 4. Description of the project
+
+### 4.1 Project organization
+
+* :open_file_folder: `R`
+  + :open_file_folder: `functions` Functions used in the two main scripts
+    - `graphical_par.R` Graphical parameters
+    - `theme_graph.R` Theme for graphs
+    - `theme_map.R` Theme for maps (primary)
+    - `theme_map2.R` Theme for maps (secondary)
+  + `01_reefs-ecoregion.R` Filter ecoregions containing coral reefs
+  + `02_analysis.Rmd` Main analysis script
+
+### 4.2 Data description
+
+Four datasets were used for the analyses:
+
+* Base map datasets downloaded on [Natural Earth Data](https://www.naturalearthdata.com/downloads/10m-physical-vectors/).
+
+* Marine Ecoregions of the World (MEOW) dataset from [Spalding *et al*, 2007](https://academic.oup.com/bioscience/article/57/7/573/238419).
+
+* Distribution of coral reefs of the world from [UNEP-WCMC](https://data.unep-wcmc.org/datasets/1).
+
+* Synthetic dataset used for the [*Status of Coral Reefs of the World: 2020*](https://gcrmn.net/2020-report/) report.
+
+## 5. How to report issues?
+
+Please report any bugs or issues [HERE](https://github.com/JWicquart/monitoring_reefs/issues).
+
+
+## 6. Reproducibility parameters
+
+```{r echo=FALSE, message=FALSE}
+
+# 1. Print session info ----
+
+devtools::session_info(c("sf", "tidyverse", "magrittr", "readxl", "ggstream",
+                         "patchwork", "ggtext", "glue", "ggrepel", "FactoMineR", "RColorBrewer", "ggforce"))
+
+```
